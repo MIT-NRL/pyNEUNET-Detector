@@ -15,6 +15,8 @@ IP_ADDRESS = '192.168.0.17'
 PORT = 23
 BINS = 1024
 SANITY_PINGS = 100
+NEUTRON_EVENT = b"\x5f"
+INST_TIME = b"\x6c"
 
 class detector_reader:
     def __init__(self, ip_address=IP_ADDRESS, port=PORT):
@@ -22,13 +24,19 @@ class detector_reader:
         self.ip = ip_address
         self.port = port
 
+    # def collect_8bytes(self):
+    #     self.hex_data = ""
+    #     for j in range(8):
+    #         self.hex_data += self.sock.recv(1).hex()
+
     def collect_8bytes(self):
-        self.hex_data = ""
+        self.bytes_data = bytearray(b"")
         for j in range(8):
-            self.hex_data += self.sock.recv(1).hex()
+            self.bytes_data += self.sock.recv(1)
 
     def translate_5f(self):
-        psd_number, position = translate_neutron_data(self.hex_data)
+        # psd_number, position = translate_neutron_data(self.hex_data)
+        psd_number, position = translate_neutron_data(self.bytes_data)
         if position:
             res = BINS-1 if position*BINS >= BINS else int(position*BINS)
             if psd_number == 0:
@@ -47,16 +55,22 @@ class detector_reader:
         self.current_time = 0
         while not self.start_time:
             self.collect_8bytes()
-            if self.hex_data[:2] == "5f":
+            # if self.hex_data[:2] == "5f":
+            if self.bytes_data[1] == NEUTRON_EVENT:
                 self.translate_5f()
-            elif self.hex_data[:2] == "6c":
-                self.start_time = translate_instrument_time(self.hex_data)
+            # elif self.hex_data[:2] == "6c":
+            #    self.start_time = translate_instrument_time(self.hex_data)
+            elif self.bytes_data[1] == INST_TIME:
+                self.start_time = translate_instrument_time(self.bytes_data)
         while self.current_time - self.start_time < time_len:
             self.collect_8bytes()
-            if self.hex_data[:2] == "5f":
+            # if self.hex_data[:2] == "5f":
+            if self.bytes_data[1] == NEUTRON_EVENT:
                 self.translate_5f()
-            elif self.hex_data[:2] == "6c":
-                self.current_time = translate_instrument_time(self.hex_data)
+            # elif self.hex_data[:2] == "6c":
+            #     self.current_time = translate_instrument_time(self.hex_data)
+            elif self.bytes_data[1] == INST_TIME:
+                self.current_time = translate_instrument_time(self.bytes_data)
         self.sock.close()
 
         if save:
@@ -74,7 +88,11 @@ class detector_reader:
         self.sock.connect((self.ip, self.port))
         for i in range(pings):
             self.collect_8bytes()
-            if self.hex_data[:2] == "5f":
-                print(translate_neutron_data(self.hex_data))
-            elif self.hex_data[:2] == "6c":
-                print(translate_instrument_time(self.hex_data))
+            # if self.hex_data[:2] == "5f":
+            #     print(translate_neutron_data(self.hex_data))
+            # elif self.hex_data[:2] == "6c":
+            #     print(translate_instrument_time(self.hex_data))
+            if self.bytes_data[1] == NEUTRON_EVENT:
+                print(translate_neutron_data(self.bytes_data))
+            elif self.bytes_data[1] == INST_TIME:
+                print(translate_instrument_time(self.bytes_data))
