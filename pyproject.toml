@@ -14,26 +14,17 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "numpy",
+    "scipy",
+    "lmfit",
+    "mendeleev"
+]
 
 [project.urls]
 Homepage = "https://github.com/sfayfar/MIT-Neutron-Diffractometer.git"
 "Bug Tracker" = "https://github.com/sfayfar/MIT-Neutron-Diffractometer/issues"
 
-
-[options]
-packages = "find:"
-python_requires = ">=3.7"
-setup_requires = "setuptools_scm"
-package_dir = "src"
-include_package_data = "True"
-install_requires = [
-    "numpy",
-    "scipy",
-    "pathlib",
-    "lmfit",
-    "uncertainties",
-    "mendeleev"
-]
 
 
 [build-system]
