@@ -73,8 +73,10 @@ class detector_reader:
         self.sock.close()
 
         if save:
-            np.savetxt(f"{fldr}/{test_label}_detector0_histogram.txt", self.arr0)
-            np.savetxt(f"{fldr}/{test_label}_detector7_histogram.txt", self.arr7)
+            if fldr and "/" != fldr[-1]:
+                fldr += "/"
+            np.savetxt(f"{fldr}{test_label}_detector0_histogram.txt", self.arr0)
+            np.savetxt(f"{fldr}{test_label}_detector7_histogram.txt", self.arr7)
             plt.plot(self.arr0, label="psd 0")
             plt.plot(self.arr7, label="psd 7")
             plt.legend()
@@ -94,3 +96,6 @@ class detector_reader:
                 print(translate_neutron_data(self.bytes_data))
             elif self.bytes_data[1] == INST_TIME:
                 print(translate_instrument_time(self.bytes_data))
+
+reader = detector_reader()
+reader.start(60, "test8.4")
