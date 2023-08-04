@@ -37,7 +37,7 @@ class detector_reader:
 
     def translate_5f(self):
         psd_number, position = translate_neutron_data(self.bytes_data)
-        if position:
+        if position is not None:
             res = BINS-1 if position*BINS >= BINS else int(position*BINS)
             if psd_number == 0:
                 self.arr0[res] += 1
