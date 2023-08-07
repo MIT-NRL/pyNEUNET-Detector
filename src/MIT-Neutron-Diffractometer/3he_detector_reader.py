@@ -32,12 +32,16 @@ class detector_reader:
         self.ip = ip_address
         self.port = port
 
-    def collect_8bytes(self, offset=False):
+    def collect_8bytes(self, offset=False, verbose=False):
         # Collect bytes 1-by-1 due to socket's unpredictability re length of data
         if offset:
             recv_byte = self.sock.recv(1)[0]
+            if verbose:
+                print(recv_byte)
             while recv_byte not in HEADERS:
                 recv_byte = self.sock.recv(1)[0]
+                if verbose:
+                    print(recv_byte)
             self.bytes_data = bytearray([recv_byte])
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
@@ -47,6 +51,8 @@ class detector_reader:
             self.bytes_data = bytearray(b"")
             for i in range(8):
                 self.bytes_data += self.sock.recv(1)
+        if verbose:
+            print(self.bytes_data)
 
     def translate_5f(self):
         psd_number, position = translate_neutron_data(self.bytes_data)
