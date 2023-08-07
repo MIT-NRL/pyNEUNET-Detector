@@ -10,7 +10,7 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from translaters import translate_instrument_time, translate_neutron_data
+from translaters import translate_instrument_time, translate_neutron_data, to_physical_position
 
 IP_ADDRESS = '192.168.0.17'
 PORT = 23
@@ -19,10 +19,9 @@ SANITY_PINGS = 100
 NEUTRON_EVENT = 0x5f
 TRIGGER_ID = 0x5b
 INST_TIME = 0x6c
-HEADERS = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
-EFFECTIVE_LENGTH_MM = 150
-ANODE_RESISTANCE = 1.5 # kilo-ohms
-PREAMP_RESISTANCE = 1
+START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
+BLANK_ARRAY = np.array([[0 for i in range(BINS)],
+                              [to_physical_position(i/BINS) for i in range(BINS)]])
 
 class detector_reader:
     def __init__(self, ip_address=IP_ADDRESS, port=PORT):
@@ -41,7 +40,7 @@ class detector_reader:
             recv_byte = self.sock.recv(1)[0]
             if verbose:
                 print(recv_byte)
-            while recv_byte not in HEADERS:
+            while recv_byte not in START_BYTES:
                 recv_byte = self.sock.recv(1)[0]
                 if verbose:
                     print(recv_byte)
@@ -62,10 +61,10 @@ class detector_reader:
         if position is not None:
             res = BINS-1 if position*BINS >= BINS else int(position*BINS)
             if psd_number == 0:
-                self.arr0[res] += 1
+                self.arr0[0][res] += 1
                 self.count0 += 1
             elif psd_number == 7:
-                self.arr7[res] += 1
+                self.arr7[0][res] += 1
                 self.count7 += 1
 
     def start(self, seconds, test_label, save=True, verbose=False, fldr=""):
@@ -77,7 +76,7 @@ class detector_reader:
         self.sock.connect((self.ip, self.port))
         if verbose:
             print("Connected")
-        self.arr0, self.arr7 = np.zeros(BINS), np.zeros(BINS)
+        self.arr0, self.arr7 = np.copy(BLANK_ARRAY), np.copy(BLANK_ARRAY)
         self.count0 = 0
         self.count7 = 0
         self.start_time = 0
@@ -108,8 +107,12 @@ class detector_reader:
                 if fldr[-1] != "/":
                     fldr += "/"
                 test_label = fldr + test_label
-            np.savetxt(f"{test_label}_detector0_histogram.txt", self.arr0)
-            np.savetxt(f"{test_label}_detector7_histogram.txt", self.arr7)
+            np.savetxt(f"{test_label}_detector0_histogram.txt", self.arr0,
+                       header=f"detector 0, start: {self.start_time}; \
+                        column 1 = decimal position, column 2 = physical position (mm).")
+            np.savetxt(f"{test_label}_detector7_histogram.txt", self.arr7,
+                       header=f"detector 7, start: {self.start_time}; \
+                        column 1 = decimal position, column 2 = physical position (mm).")
             plt.plot(self.arr0, label="psd 0")
             plt.plot(self.arr7, label="psd 7")
             plt.legend()

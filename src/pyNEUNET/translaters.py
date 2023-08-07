@@ -7,6 +7,10 @@ Translates data from detectors
 Formulae from Canon documentation
 """
 
+EFFECT_LEN_MM = 150
+ANODE_RES = 1.5 # kilo-ohms
+PREAMP_RES = 1
+
 def translate_neutron_data(bin_data):
     nanoseconds = 25*10**-9*(2**16*bin_data[1] + 2**8*bin_data[2] + bin_data[3])
     psd_number = (bin_data[4] // 2**4) % 2**3
@@ -28,3 +32,6 @@ def translate_instrument_time(bin_data):
     seconds2 = 2**-15*(2**7*bin_data[5] + bin_data[6] // 2**1)
     seconds3 = 25*10**-8*(2**8*(bin_data[6] % 2**3) + bin_data[7])
     return seconds1 + seconds2 + seconds3
+
+def to_physical_position(decimal_pos):
+        return (decimal_pos - 0.5)*EFFECT_LEN_MM*(ANODE_RES + 2*PREAMP_RES)/ANODE_RES
