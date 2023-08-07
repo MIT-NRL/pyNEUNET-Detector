@@ -15,9 +15,9 @@ IP_ADDRESS = '192.168.0.17'
 PORT = 23
 BINS = 1024
 SANITY_PINGS = 100
-NEUTRON_EVENT = bytearray.fromhex("5f")
-TRIGGER_ID = bytearray.fromhex("5b")
-INST_TIME = bytearray.fromhex("6c")
+NEUTRON_EVENT = 0x5f
+TRIGGER_ID = 0x5b
+INST_TIME = 0x6c
 HEADERS = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
 
 class detector_reader:
@@ -34,10 +34,10 @@ class detector_reader:
     def collect_8bytes(self, offset=False):
         # Collect bytes 1-by-1 due to socket's unpredictability re length of data
         if offset:
-            recv_byte = self.sock.recv(1)
+            recv_byte = self.sock.recv(1)[0]
             while recv_byte not in HEADERS:
-                recv_byte = self.sock.recv(1)
-            self.bytes_data = recv_byte
+                recv_byte = self.sock.recv(1)[0]
+            self.bytes_data = bytearray([recv_byte])
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
             if recv_byte == INST_TIME:
@@ -77,17 +77,17 @@ class detector_reader:
             print("Started collecting")
         while not self.start_time:
             self.collect_8bytes()
-            if self.bytes_data[0] == int.from_bytes(NEUTRON_EVENT, "big"):
+            if self.bytes_data[0] == NEUTRON_EVENT:
                 self.translate_5f()
-            elif self.bytes_data[0] == int.from_bytes(INST_TIME, "big"):
+            elif self.bytes_data[0] == INST_TIME:
                 self.start_time = translate_instrument_time(self.bytes_data)
         if verbose:
             print("Exited first loop")
         while self.current_time - self.start_time < seconds:
             self.collect_8bytes()
-            if self.bytes_data[0] == int.from_bytes(NEUTRON_EVENT, "big"):
+            if self.bytes_data[0] == NEUTRON_EVENT:
                 self.translate_5f()
-            elif self.bytes_data[0] == int.from_bytes(INST_TIME, "big"):
+            elif self.bytes_data[0] ==INST_TIME:
                 self.current_time = translate_instrument_time(self.bytes_data)
         if verbose:
             print("Exited second loop")
@@ -115,14 +115,13 @@ class detector_reader:
         self.collect_8bytes(offset=True)
         print(self.bytes_data)
         print(self.bytes_data.hex(" "))
-        print(self.bytes_data[0])
         for i in range(pings-1):
             self.collect_8bytes()
             print(self.bytes_data)
             print(self.bytes_data.hex(" "))
             print(self.bytes_data[0])
-            if self.bytes_data[0] == int.from_bytes(NEUTRON_EVENT, "big"):
+            if self.bytes_data[0] == NEUTRON_EVENT:
                 print(translate_neutron_data(self.bytes_data))
-            elif self.bytes_data[0] == int.from_bytes(INST_TIME, "big"):
+            elif self.bytes_data[0] == INST_TIME:
                 print(translate_instrument_time(self.bytes_data))
         self.sock.close()
