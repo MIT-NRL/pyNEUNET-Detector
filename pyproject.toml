@@ -1,6 +1,6 @@
 [project]
 name = "pyNEUNET"
-version = "0.1.0"
+version = "v0.1.0"
 # dynamic = ["version"]
 authors = [
   { name="Sean Fayfar", email="sfayfar@mit.edu" },
@@ -35,5 +35,21 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools_scm]
-write_to = "src/pyNEUNET/_version.py"
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'version = "{version}"'
+]
+"src/pyNEUNET/__init__.py" = ['__version__ = "{version}"']
+"README.md" = ['{version}']
+
+
+[tool.bumpver]
+current_version = "v0.1.0"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAGNUM]"
+commit_message = "bump version to {new_version}"
+commit = false
+tag = false
+push = false
+
+# [tool.setuptools_scm]
+# write_to = "src/pyNEUNET/_version.py"
