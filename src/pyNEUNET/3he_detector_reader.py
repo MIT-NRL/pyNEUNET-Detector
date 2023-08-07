@@ -20,6 +20,9 @@ NEUTRON_EVENT = 0x5f
 TRIGGER_ID = 0x5b
 INST_TIME = 0x6c
 HEADERS = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
+EFFECTIVE_LENGTH_MM = 150
+ANODE_RESISTANCE = 1.5 # kilo-ohms
+PREAMP_RESISTANCE = 1
 
 class detector_reader:
     def __init__(self, ip_address=IP_ADDRESS, port=PORT):
