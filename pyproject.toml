@@ -1,5 +1,5 @@
 [project]
-name = "MIT-Neutron-Diffractometer"
+name = "pyNEUNET"
 version = "0.1.0"
 # dynamic = ["version"]
 authors = [
