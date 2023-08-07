@@ -9,6 +9,7 @@ Implements basic packet reader
 import socket
 import numpy as np
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 from translaters import translate_instrument_time, translate_neutron_data
 
 IP_ADDRESS = '192.168.0.17'
@@ -94,17 +95,26 @@ class detector_reader:
         self.sock.close()
 
         if save:
-            if fldr and "/" != fldr[-1]:
-                fldr += "/"
-            np.savetxt(f"{fldr}{test_label}_detector0_histogram.txt", self.arr0)
-            np.savetxt(f"{fldr}{test_label}_detector7_histogram.txt", self.arr7)
+            if fldr:
+                if fldr[-1] != "/":
+                    fldr += "/"
+                test_label = fldr + test_label
+            np.savetxt(f"{test_label}_detector0_histogram.txt", self.arr0)
+            np.savetxt(f"{test_label}_detector7_histogram.txt", self.arr7)
             plt.plot(self.arr0, label="psd 0")
             plt.plot(self.arr7, label="psd 7")
             plt.legend()
             plt.xlabel("position")
             plt.ylabel("neutron count")
             plt.title(test_label)
-            plt.savefig(f"{fldr}/{test_label}_graph.png")
+            plt.savefig(f"{test_label}_graph.png")
+
+        result = OrderedDict()
+        result["detector 0"] =  {"value": self.arr0, "timestamp": self.start_time}
+        result["detector 7"] =  {"value": self.arr7, "timestamp": self.start_time}
+        if verbose:
+            print(result)
+        return result
 
     def sanity_check(self, pings=SANITY_PINGS):
         """
