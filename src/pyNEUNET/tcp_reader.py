@@ -27,15 +27,34 @@ class detector_reader:
     def __init__(self, ip_address=IP_ADDRESS, port=PORT):
         """
         Creates new socket object linked to detectors
-        Inputs: ip_address (string), port (int)
         Default inputs given by Canon documentation for TCP connection
+
+        Parameters
+        -------
+        ip_address: str, optional
+                Remote address of detector
+                Default is 192.168.0.17
+        port: int, optional
+                Port number for TCP connection
+                Default is 23
         """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.ip = ip_address
         self.port = port
 
     def collect_8bytes(self, offset=False, verbose=False):
-        # Collect bytes 1-by-1 due to socket's unpredictability re length of data
+        """
+        Collect 8 bytes from already connected detector
+        Bytes collected 1-by-1 due to socket's unpredictability re length of data
+
+        Parameters
+        -------
+        offset: boolean, optional
+                True if the data may not start with preferred byte values
+                Default is False
+        verbose: boolean, optional
+                Whether to print out data as it comes in
+        """
         if offset:
             recv_byte = self.sock.recv(1)[0]
             if verbose:
@@ -57,6 +76,9 @@ class detector_reader:
             print(self.bytes_data)
 
     def translate_5f(self):
+        """
+        Translates neutron data and adds to relevant histogram arrays
+        """
         psd_number, position = translate_neutron_data(self.bytes_data)
         if position is not None:
             res = BINS-1 if position*BINS >= BINS else int(position*BINS)
@@ -69,9 +91,30 @@ class detector_reader:
 
     def start(self, seconds, test_label, save=True, verbose=False, fldr=""):
         """"
-        Connects to detector and reads data for given time
-        Can save data (in folder if given)
-        Inputs: seconds (float), test_label (string), save (bool), fldr (string)
+        Connects to detector and reads data for given time length
+        Creates histograms of neutron counts for binned physical positions on detectors
+        
+        Parameters
+        -------
+        seconds: float or int
+                Time to collect data for
+        test_label: str
+                Name of files and graph
+        save: boolean, optional
+                Whether to save histogram data and graph onto computer
+                Default is True
+        verbose: boolean, optional
+                Whether to print indications that code is working
+                Default is False
+        fldr: str, optional
+                Folder to save data to
+                Only called if save is True
+                Default is main directory
+
+        Returns
+        -------
+        result: OrderedDict
+                Stores histograms for each detector and start time for data collection
         """
         self.sock.connect((self.ip, self.port))
         if verbose:
@@ -91,7 +134,7 @@ class detector_reader:
             elif self.bytes_data[0] == INST_TIME:
                 self.start_time = translate_instrument_time(self.bytes_data)
         if verbose:
-            print("Exited first loop")
+            print("Reached first 'instrument time' data")
         while self.current_time - self.start_time < seconds:
             self.collect_8bytes()
             if self.bytes_data[0] == NEUTRON_EVENT:
@@ -99,7 +142,7 @@ class detector_reader:
             elif self.bytes_data[0] ==INST_TIME:
                 self.current_time = translate_instrument_time(self.bytes_data)
         if verbose:
-            print("Exited second loop")
+            print("Ran through entire time length")
         self.sock.close()
 
         if save:
@@ -131,6 +174,12 @@ class detector_reader:
     def sanity_check(self, pings=SANITY_PINGS):
         """
         Prints out given number of packets
+
+        Parameters
+        -------
+        pings: int, optional
+                Number of packets to print
+                Default is 100
         """
         self.sock.connect((self.ip, self.port))
         print("Connected")
