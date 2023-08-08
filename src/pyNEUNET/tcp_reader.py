@@ -124,7 +124,7 @@ class detector_reader:
         self.count7 = 0
         self.start_time = 0
         self.current_time = 0
-        
+
         self.collect_8bytes(offset=True)
         if verbose:
             print("Started collecting")

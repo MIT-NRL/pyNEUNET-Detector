@@ -78,4 +78,4 @@ def to_physical_position(decimal_pos):
 
 # We don't use trigger data or TOF
 def translate_trigger_id(bin_data):
-    return bin_data[1], bin_data[2], bin_data[3]
+    return bin_data[1], bin_data[2], bin_data[3:]
