@@ -16,6 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
+    "matplotlib",
     "scipy",
     "lmfit",
     "mendeleev"
