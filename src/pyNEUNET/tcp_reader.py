@@ -10,7 +10,7 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from .translaters import translate_instrument_time, translate_neutron_data, to_physical_position
+from translaters import translate_instrument_time, translate_neutron_data, to_physical_position
 
 IP_ADDRESS = "192.168.0.17"
 TCP_PORT = 23
@@ -40,6 +40,7 @@ class detector_reader:
                 Default is 23
         """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.sock.settimeout(5)
         self.ip = ip_address
         self.port = port
 
