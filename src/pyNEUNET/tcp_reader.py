@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict
 from translaters import translate_instrument_time, translate_neutron_data, to_physical_position
 
-IP_ADDRESS = '192.168.0.17'
-PORT = 23
+IP_ADDRESS = "192.168.0.17"
+TCP_PORT = 23
+UDP_PORT = 4660
 BINS = 1024
 SANITY_PINGS = 100
 NEUTRON_EVENT = 0x5f
@@ -24,7 +25,7 @@ BLANK_ARRAY = np.array([[0 for i in range(BINS)],
                               [to_physical_position(i/BINS) for i in range(BINS)]])
 
 class detector_reader:
-    def __init__(self, ip_address=IP_ADDRESS, port=PORT):
+    def __init__(self, ip_address=IP_ADDRESS, port=TCP_PORT):
         """
         Creates new socket object linked to detectors
         Inputs: ip_address (string), port (int)
@@ -134,7 +135,8 @@ class detector_reader:
         """
         self.sock.connect((self.ip, self.port))
         print("Connected")
-        self.collect_8bytes(offset=True)
+        print(self.sock.recv(1))
+        self.collect_8bytes(offset=False)
         print(self.bytes_data)
         print(self.bytes_data.hex(" "))
         for i in range(pings-1):
@@ -147,3 +149,7 @@ class detector_reader:
             elif self.bytes_data[0] == INST_TIME:
                 print(translate_instrument_time(self.bytes_data))
         self.sock.close()
+
+obj = detector_reader()
+obj.sanity_check()
+# obj.start(10, "test 2 columns", True, True)
