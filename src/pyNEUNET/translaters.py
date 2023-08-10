@@ -7,6 +7,8 @@ Translates data from detectors
 Formulae from Canon documentation ("Communication Protocol of NeuNET system-revA2.pdf")
 """
 
+from datetime import datetime
+
 EFFECT_LEN_MM = 150
 ANODE_RES = 1.5 # kilo-ohms
 PREAMP_RES = 1
@@ -58,6 +60,34 @@ def translate_instrument_time(bin_data):
     seconds3 = 25*10**-8*(2**8*(bin_data[6] % 2**3) + bin_data[7])
     seconds = seconds1 + seconds2 + seconds3
     return seconds
+
+def instrument_time(input=None,mode='seconds'):
+    '''
+    Function to convert time from bytes to seconds and the reverse.
+    Time is defined as seconds since 2008
+
+    Parameters
+    ---------
+    input : 5 bytes representing time, optional
+        If input is None, the current time will be output as 5 bytes
+    mode : str
+        'seconds' : output time in seconds
+        'datetime' : output time in datetime
+
+    '''
+    if input is None:
+        secondsSince2008 = (datetime.now() - datetime(2008,1,1,0,0)).total_seconds()
+        secondsBytes = int(secondsSince2008).to_bytes(4,'big')
+        subsecondsBytes = int(secondsSince2008 % 1 * 2**8).to_bytes(1,'big')
+        return secondsBytes + subsecondsBytes
+    else:
+        intSeconds = int.from_bytes(input[:4],'big')
+        intSubSeconds = input[-1]
+        secondsSince2008 = intSeconds + (intSubSeconds / 2**8)
+        if mode == 'seconds':
+            return secondsSince2008
+        elif mode == 'datetime':
+            return datetime(2008,1,1) + secondsSince2008
 
 def to_physical_position(decimal_pos):
     """
