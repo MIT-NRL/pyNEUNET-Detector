@@ -10,7 +10,7 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from translaters import translate_instrument_time, translate_neutron_data, to_physical_position
+from translaters import instrument_time, translate_neutron_data, to_physical_position
 
 IP_ADDRESS = "192.168.0.17"
 TCP_PORT = 23
@@ -69,7 +69,7 @@ class detector_reader:
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
             if recv_byte == INST_TIME:
-                self.start_time = translate_instrument_time(recv_byte)
+                self.start_time = instrument_time(recv_byte)
         else:
             self.bytes_data = bytearray(b"")
             for i in range(8):
@@ -198,7 +198,7 @@ class detector_reader:
             if self.bytes_data[0] == NEUTRON_EVENT:
                 print(translate_neutron_data(self.bytes_data))
             elif self.bytes_data[0] == INST_TIME:
-                print(translate_instrument_time(self.bytes_data))
+                print(instrument_time(self.bytes_data))
         self.sock.close()
 
 
