@@ -135,7 +135,7 @@ class detector_reader:
             if self.bytes_data[0] == NEUTRON_EVENT:
                 self.translate_5f()
             elif self.bytes_data[0] == INST_TIME:
-                self.start_time = translate_instrument_time(self.bytes_data)
+                self.start_time = instrument_time(self.bytes_data)
         if verbose:
             print("Reached first 'instrument time' data")
         while self.current_time - self.start_time < seconds:
@@ -143,7 +143,7 @@ class detector_reader:
             if self.bytes_data[0] == NEUTRON_EVENT:
                 self.translate_5f()
             elif self.bytes_data[0] ==INST_TIME:
-                self.current_time = translate_instrument_time(self.bytes_data)
+                self.current_time = instrument_time(self.bytes_data)
         if verbose:
             print("Ran through entire time length")
         self.sock.close()
