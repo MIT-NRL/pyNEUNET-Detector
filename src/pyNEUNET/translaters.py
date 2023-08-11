@@ -82,7 +82,7 @@ def instrument_time(input=None,mode='seconds'):
         return secondsBytes + subsecondsBytes
     else:
         intSeconds = int.from_bytes(input[:4],'big')
-        intSubSeconds = input[-1]
+        intSubSeconds = input[5]
         secondsSince2008 = intSeconds + (intSubSeconds / 2**8)
         if mode == 'seconds':
             return secondsSince2008
