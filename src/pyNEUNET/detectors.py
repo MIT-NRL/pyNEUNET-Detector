@@ -189,7 +189,7 @@ class Linear3HePSD:
             plt.title(test_label)
             plt.savefig(f"{test_label}_graph.png")
 
-        # Timestamp must be in the format of seconds since 1970
+        # Timestamp is in the format of seconds since 1970
         result = OrderedDict()
         result["detector 0"] =  {"value": self.arr0, "timestamp": instrument_time(self.start_time).timestamp()}
         result["detector 7"] =  {"value": self.arr7, "timestamp": instrument_time(self.start_time).timestamp()}
