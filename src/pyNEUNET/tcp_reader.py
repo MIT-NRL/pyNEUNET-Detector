@@ -103,7 +103,7 @@ class detector_reader:
                 self.arr7[0][res] += 1
                 self.count7 += 1
 
-    def start(self, seconds, test_label, save=True, verbose=False, fldr=""):
+    def read(self, seconds, test_label, save=True, verbose=False, fldr=""):
         """"
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
