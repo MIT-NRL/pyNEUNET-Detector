@@ -24,7 +24,7 @@ START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
 BLANK_ARRAY = np.array([[0 for i in range(BINS)],
                               [to_physical_position(i/BINS) for i in range(BINS)]])
 
-class detector_reader:
+class Linear3HePSD:
     def __init__(self, ip_address=IP_ADDRESS, port=TCP_PORT):
         """
         Creates new socket object linked to detectors
