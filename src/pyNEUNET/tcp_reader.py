@@ -58,20 +58,20 @@ class detector_reader:
                 Whether to print out data as it comes in
         """
         if offset:
-            recv_byte = self.sock.recv(1)[0]
+            recv_byte = self.sock.recv(1)
             if verbose:
                 print(recv_byte)
-            while recv_byte not in START_BYTES:
-                recv_byte = self.sock.recv(1)[0]
+            while recv_byte[0] not in START_BYTES:
+                recv_byte = self.sock.recv(1)
                 if verbose:
-                    print(recv_byte)
-            self.bytes_data = bytearray([recv_byte])
+                    print('0x'+recv_byte.hex())
+            self.bytes_data = recv_byte
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
-            if recv_byte == INST_TIME:
+            if recv_byte[0] == INST_TIME:
                 self.start_time = instrument_time(recv_byte)
         else:
-            self.bytes_data = bytearray(b"")
+            self.bytes_data = bytes()
             for i in range(8):
                 self.bytes_data += self.sock.recv(1)
         if verbose:
