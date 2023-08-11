@@ -64,7 +64,8 @@ def translate_instrument_time(bin_data):
 def instrument_time(input=None,mode='seconds'):
     '''
     Function to convert time from bytes to seconds and the reverse.
-    Time is defined as seconds since 2008
+    Time is defined as seconds since 2008 and stored in 5 bytes.
+    4 bytes for seconds and 1 byte for subsections
 
     Parameters
     ---------
