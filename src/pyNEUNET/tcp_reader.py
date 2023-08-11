@@ -64,7 +64,7 @@ class detector_reader:
             while recv_byte[0] not in START_BYTES:
                 recv_byte = self.sock.recv(1)
                 if verbose:
-                    print('Header : 0x'+recv_byte.hex())
+                    print(recv_byte.hex())
             self.bytes_data = recv_byte
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
@@ -77,9 +77,9 @@ class detector_reader:
         if verbose:
             print('Data : '+self.bytes_data.hex(':'))
 
-    def translate_5f(self):
+    def count_neutron(self):
         """
-        Translates neutron data and adds to relevant histogram arrays
+        Counts the neutron event and adds it to the histogram
         """
         psd_number, position = translate_neutron_data(self.bytes_data)
         if position is not None:
@@ -133,7 +133,7 @@ class detector_reader:
         while not self.start_time:
             self.collect_8bytes()
             if self.bytes_data[0] == NEUTRON_EVENT:
-                self.translate_5f()
+                self.count_neutron()
             elif self.bytes_data[0] == INST_TIME:
                 self.start_time = instrument_time(self.bytes_data)
         if verbose:
@@ -141,7 +141,7 @@ class detector_reader:
         while self.current_time - self.start_time < seconds:
             self.collect_8bytes()
             if self.bytes_data[0] == NEUTRON_EVENT:
-                self.translate_5f()
+                self.count_neutron()
             elif self.bytes_data[0] ==INST_TIME:
                 self.current_time = instrument_time(self.bytes_data)
         if verbose:
