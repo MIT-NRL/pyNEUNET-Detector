@@ -184,9 +184,10 @@ class detector_reader:
             plt.title(test_label)
             plt.savefig(f"{test_label}_graph.png")
 
+        # Timestamp must be in the format of seconds since 1970
         result = OrderedDict()
-        result["detector 0"] =  {"value": self.arr0, "timestamp": self.start_time}
-        result["detector 7"] =  {"value": self.arr7, "timestamp": self.start_time}
+        result["detector 0"] =  {"value": self.arr0, "timestamp": instrument_time(self.start_time).timestamp()}
+        result["detector 7"] =  {"value": self.arr7, "timestamp": instrument_time(self.start_time).timestamp()}
         if verbose:
             print(result)
         return result
@@ -215,8 +216,16 @@ class detector_reader:
             if self.bytes_data[0] == NEUTRON_EVENT:
                 print(translate_neutron_data(self.bytes_data))
             elif self.bytes_data[0] == INST_TIME:
-                print(instrument_time(self.bytes_data[1:]))
+                print(instrument_time(self.bytes_data[1:],mode='datetime'))
         self.sock.close()
+    
+    @property
+    def exposure_time(self):
+        return self.exposure_time
+    
+    @exposure_time.getter
+    def exposure_time(self,input):
+        self.exposure_time = input
 
 
 def main():
