@@ -17,9 +17,9 @@ TCP_PORT = 23
 UDP_PORT = 4660
 BINS = 1024
 SANITY_PINGS = 100
-NEUTRON_EVENT = 0x5f
-TRIGGER_ID = 0x5b
-INST_TIME = 0x6c
+NEUTRON_EVENT = b'0x5f'
+TRIGGER_ID = b'0x5b'
+INST_TIME = b'0x6c'
 START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
 BLANK_ARRAY = np.array([[0 for i in range(BINS)],
                               [to_physical_position(i/BINS) for i in range(BINS)]])
@@ -61,21 +61,21 @@ class detector_reader:
             recv_byte = self.sock.recv(1)
             if verbose:
                 print(recv_byte)
-            while recv_byte[0] not in START_BYTES:
+            while recv_byte not in START_BYTES:
                 recv_byte = self.sock.recv(1)
                 if verbose:
-                    print('0x'+recv_byte.hex())
+                    print('Header : 0x'+recv_byte.hex())
             self.bytes_data = recv_byte
             for i in range(7):
                 self.bytes_data += self.sock.recv(1)
-            if recv_byte[0] == INST_TIME:
+            if recv_byte == INST_TIME:
                 self.start_time = instrument_time(recv_byte)
         else:
             self.bytes_data = bytes()
             for i in range(8):
                 self.bytes_data += self.sock.recv(1)
         if verbose:
-            print(self.bytes_data)
+            print('Data : '+self.bytes_data.hex(':'))
 
     def translate_5f(self):
         """
