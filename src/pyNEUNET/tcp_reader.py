@@ -44,6 +44,18 @@ class detector_reader:
         self.ip = ip_address
         self.port = port
 
+    def stage():
+        '''
+        Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
+        '''
+        ...
+
+    def unstage():
+        '''
+        Shuts down and clears the NEUNET system register.
+        '''
+        ...
+
     def collect_8bytes(self, offset=False, verbose=False):
         """
         Collect 8 bytes from already connected detector
