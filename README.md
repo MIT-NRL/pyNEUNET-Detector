@@ -1,4 +1,4 @@
 # pyNEUNET
 
 ## Version number
-current version = 'v0.1.0'
+current version = '0.1.0'
