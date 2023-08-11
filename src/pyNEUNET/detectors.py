@@ -10,8 +10,9 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from translaters import instrument_time, translate_neutron_data, to_physical_position
+from .translaters import instrument_time, translate_neutron_data, to_physical_position
 
+# We should move this block of startup vars inside the class. Otherwise they are defined within our module. 
 IP_ADDRESS = "192.168.0.17"
 TCP_PORT = 23
 UDP_PORT = 4660
@@ -25,6 +26,10 @@ BLANK_ARRAY = np.array([[0 for i in range(BINS)],
                               [to_physical_position(i/BINS) for i in range(BINS)]])
 
 class Linear3HePSD:
+    '''
+    Linear 3He position sensitive neutron detector with a resolution of 5 mm
+    built by Canon. The device is controlled with the NUENET system. 
+    '''
     def __init__(self, ip_address=IP_ADDRESS, port=TCP_PORT):
         """
         Creates new socket object linked to detectors
