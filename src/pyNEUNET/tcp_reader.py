@@ -132,9 +132,10 @@ class detector_reader:
             print("Started collecting")
         while not self.start_time:
             self.collect_8bytes()
-            if self.bytes_data[0] == NEUTRON_EVENT:
-                self.count_neutron()
-            elif self.bytes_data[0] == INST_TIME:
+            # We probably don't want to count neutrons until time starts
+            # if self.bytes_data[0] == NEUTRON_EVENT:
+            #     self.count_neutron()
+            if self.bytes_data[0] == INST_TIME:
                 self.start_time = instrument_time(self.bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
