@@ -69,7 +69,7 @@ def instrument_time(input=None,mode='seconds'):
 
     Parameters
     ---------
-    input : 5 bytes representing time, optional
+    input : Time input as 5 bytes, seconds, or datetime, optional
         If input is None, the current time will be output as 5 bytes
     mode : str
         'seconds' : output time in seconds
@@ -81,7 +81,7 @@ def instrument_time(input=None,mode='seconds'):
         secondsBytes = int(secondsSince2008).to_bytes(4,'big')
         subsecondsBytes = int(secondsSince2008 % 1 * 2**8).to_bytes(1,'big')
         return secondsBytes + subsecondsBytes
-    else:
+    elif isinstance(input,(bytes,bytearray)):
         intSeconds = int.from_bytes(input[:4],'big')
         intSubSeconds = input[5]
         secondsSince2008 = intSeconds + (intSubSeconds / 2**8)
@@ -89,6 +89,10 @@ def instrument_time(input=None,mode='seconds'):
             return secondsSince2008
         elif mode == 'datetime':
             return datetime(2008,1,1) + timedelta(seconds=secondsSince2008)
+    elif isinstance(input,(int,float)):
+        return datetime(2008,1,1,0,0) + timedelta(seconds=input)
+    elif isinstance(input,datetime):
+        return (input - datetime(2008,1,1,0,0)).total_seconds()
 
 def to_physical_position(decimal_pos):
     """
