@@ -89,7 +89,7 @@ class Linear3HePSD:
         if verbose:
             print('Data : '+self.bytes_data.hex(':'))
 
-    def count_neutron(self):
+    def _count_neutron(self):
         """
         Counts the neutron event and adds it to the histogram
         """
@@ -146,7 +146,7 @@ class Linear3HePSD:
             self.collect_8bytes()
             # We probably don't want to count neutrons until time starts
             # if self.bytes_data[0] == NEUTRON_EVENT:
-            #     self.count_neutron()
+            #     self._count_neutron()
             if self.bytes_data[0] == INST_TIME:
                 self.start_time = instrument_time(self.bytes_data[1:])
         if verbose:
@@ -154,7 +154,7 @@ class Linear3HePSD:
         while self.current_time - self.start_time < seconds:
             self.collect_8bytes()
             if self.bytes_data[0] == NEUTRON_EVENT:
-                self.count_neutron()
+                self._count_neutron()
             elif self.bytes_data[0] == INST_TIME:
                 self.current_time = instrument_time(self.bytes_data[1:])
         self.elapsed_time = self.current_time - self.start_time
@@ -229,7 +229,7 @@ class Linear3HePSD:
 
 
 def main():
-    obj = detector_reader()
+    obj = Linear3HePSD()
     obj.sanity_check()
 # obj.start(10, "test 2 columns", True, True)
 
