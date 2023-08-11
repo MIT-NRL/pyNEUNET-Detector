@@ -145,8 +145,12 @@ class detector_reader:
                 self.count_neutron()
             elif self.bytes_data[0] == INST_TIME:
                 self.current_time = instrument_time(self.bytes_data[1:])
+        self.elapsed_time = self.current_time - self.start_time
         if verbose:
-            print("Ran through entire time length")
+            print(f"Completed collecting neutron counts.\n",
+                  f"Total counts Det0: {self.count0}\n",
+                  f"Total counts Det7: {self.count7}\n",
+                  f"Exposure time: {self.elapsed_time} s")
         self.sock.close()
 
         if save:
