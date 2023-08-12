@@ -10,7 +10,7 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from .translaters import instrument_time, translate_neutron_data, to_physical_position
+from translaters import instrument_time, translate_neutron_data, to_physical_position
 
 class Linear3HePSD:
     '''
@@ -178,7 +178,7 @@ class Linear3HePSD:
         ax0.xlabel("position (mm)")
         ax0.ylabel("neutron count")
         fig.title(test_label)
-        
+
         if save:
             if fldr:
                 if fldr[-1] != "/":
@@ -213,7 +213,6 @@ class Linear3HePSD:
                 Number of packets to print
                 Default is 100
         """
-        self.sock.connect((self.ip, self.port))
         print("Connected")
         print(self.sock.recv(1))
         self.collect_8bytes(offset=False)
