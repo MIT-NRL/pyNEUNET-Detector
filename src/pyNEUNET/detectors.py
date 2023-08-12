@@ -24,7 +24,7 @@ class Linear3HePSD:
     INST_TIME = 0x6c
     START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
     
-    def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660):
+    def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums = [0, 7]):
         """
         Creates new socket object linked to detectors
         Default inputs given by Canon documentation for TCP connection
@@ -33,16 +33,17 @@ class Linear3HePSD:
         -------
         ip_address: str, optional
                 Remote address of detector
-                Default is 192.168.0.17
-        port: int, optional
+        tcp_port: int, optional
                 Port number for TCP connection
-                Default is 23
+        udp_port: int, optional
+                Port number for TCP connection
         """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.sock.settimeout(5)
         self.ip = ip_address
         self.tcp_port = tcp_port
         self.udp_port = udp_port
+        self.psd_nums = psd_nums
 
     def stage():
         '''
@@ -96,12 +97,8 @@ class Linear3HePSD:
         psd_number, position = translate_neutron_data(self.bytes_data)
         if position is not None:
             res = self.BINS-1 if position*self.BINS >= self.BINS else int(position*self.BINS)
-            if psd_number == 0:
-                self.arr0[0][res] += 1
-                self.count0 += 1
-            elif psd_number == 7:
-                self.arr7[0][res] += 1
-                self.count7 += 1
+            self.histograms[f"detector {psd_number}"][0][res] += 1
+            self.counts[f"detector {psd_number}"] += 1
 
     def read(self, seconds, test_label, format=None, save=True, verbose=False, fldr=""):
         """"
@@ -117,7 +114,7 @@ class Linear3HePSD:
         format: str, optional
                 Format of output
                 If "bluesky", output is a bluesky-compatible OrderedDict
-                Otherwise (default), output is a dictionary
+                Otherwise (default), output is a tuple containing start time and histograms
         save: boolean, optional
                 Whether to save histogram data and graph onto computer
                 Default is True
@@ -131,7 +128,7 @@ class Linear3HePSD:
 
         Returns
         -------
-        result: OrderedDict
+        result: OrderedDict or tuple
                 Stores histograms for each detector and start time for data collection
         """
         self.sock.connect((self.ip, self.tcp_port))
@@ -139,9 +136,11 @@ class Linear3HePSD:
             print("Connected")
         blank_array = np.array([[0 for i in range(self.BINS)],
                                 [to_physical_position(i/self.BINS) for i in range(self.BINS)]])
-        self.arr0, self.arr7 = np.copy(blank_array), np.copy(blank_array)
-        self.count0 = 0
-        self.count7 = 0
+        self.counts = {}
+        self.histograms = {}
+        for i in self.psd_nums:
+            self.counts[f"detector {i}"] = 0
+            self.histograms[f"detector {i}"] = np.copy(blank_array)
         self.start_time = 0
         self.current_time = 0
 
@@ -165,10 +164,11 @@ class Linear3HePSD:
                 self.current_time = instrument_time(self.bytes_data[1:])
         self.elapsed_time = self.current_time - self.start_time
         if verbose:
-            print(f"Completed collecting neutron counts.\n",
-                  f"Total counts Det0: {self.count0}\n",
-                  f"Total counts Det7: {self.count7}\n",
-                  f"Exposure time: {self.elapsed_time} s")
+            print(f"Completed collecting neutron counts")
+            for i in self.psd_nums:
+                  print(f"Total counts from detector {i}: {self.counts[f'detector {i}']}")
+
+            print(f"Exposure time: {self.elapsed_time} s")
         self.sock.close()
 
         if save:
@@ -176,14 +176,11 @@ class Linear3HePSD:
                 if fldr[-1] != "/":
                     fldr += "/"
                 test_label = fldr + test_label
-            np.savetxt(f"{test_label}_detector0_histogram.txt", self.arr0,
-                       header=f"detector 0, start: {self.start_time}; \
-                        column 1 = decimal position, column 2 = physical position (mm).")
-            np.savetxt(f"{test_label}_detector7_histogram.txt", self.arr7,
-                       header=f"detector 7, start: {self.start_time}; \
-                        column 1 = decimal position, column 2 = physical position (mm).")
-            plt.plot(self.arr0, label="psd 0")
-            plt.plot(self.arr7, label="psd 7")
+            for i in self.psd_nums:
+                np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.histograms[f"detector {i}"],
+                           header=f"detector {i}, start: {self.start_time}; \
+                            column 1 = decimal position, column 2 = physical position (mm).")
+                plt.plot(self.self.histograms[f"detector {i}"], label=f"detector {i}")
             plt.legend()
             plt.xlabel("position")
             plt.ylabel("neutron count")
@@ -193,15 +190,14 @@ class Linear3HePSD:
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
             result = OrderedDict()
-            result["detector 0"] =  {"value": self.arr0, "timestamp": instrument_time(self.start_time).timestamp()}
-            result["detector 7"] =  {"value": self.arr7, "timestamp": instrument_time(self.start_time).timestamp()}
+            for i in self.psd_nums:
+                result[f"detector {i}"] = {"value": self.histograms[f"detector {i}"],
+                                           "timestamp": instrument_time(self.start_time).timestamp()}
             if verbose:
                 print(result)
             return result
         
-        return {"timestamp": instrument_time(self.start_time).timestamp(),
-                "detector 0": self.arr0,
-                "detector 7": self.arr7}
+        return instrument_time(self.start_time).timestamp(), self.histograms
 
     def sanity_check(self, pings=SANITY_PINGS):
         """
