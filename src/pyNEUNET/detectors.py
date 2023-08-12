@@ -103,7 +103,7 @@ class Linear3HePSD:
                 self.arr7[0][res] += 1
                 self.count7 += 1
 
-    def read(self, seconds, test_label, save=True, verbose=False, fldr=""):
+    def read(self, seconds, test_label, format=None, save=True, verbose=False, fldr=""):
         """"
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
@@ -114,6 +114,10 @@ class Linear3HePSD:
                 Time to collect data for
         test_label: str
                 Name of files and graph
+        format: str, optional
+                Format of output
+                If "bluesky", output is a bluesky-compatible OrderedDict
+                Otherwise (default), output is a dictionary
         save: boolean, optional
                 Whether to save histogram data and graph onto computer
                 Default is True
@@ -186,13 +190,18 @@ class Linear3HePSD:
             plt.title(test_label)
             plt.savefig(f"{test_label}_graph.png")
 
-        # Timestamp is in the format of seconds since 1970
-        result = OrderedDict()
-        result["detector 0"] =  {"value": self.arr0, "timestamp": instrument_time(self.start_time).timestamp()}
-        result["detector 7"] =  {"value": self.arr7, "timestamp": instrument_time(self.start_time).timestamp()}
-        if verbose:
-            print(result)
-        return result
+        if format == "bluesky":
+            # Timestamp is in the format of seconds since 1970
+            result = OrderedDict()
+            result["detector 0"] =  {"value": self.arr0, "timestamp": instrument_time(self.start_time).timestamp()}
+            result["detector 7"] =  {"value": self.arr7, "timestamp": instrument_time(self.start_time).timestamp()}
+            if verbose:
+                print(result)
+            return result
+        
+        return {"timestamp": instrument_time(self.start_time).timestamp(),
+                "detector 0": self.arr0,
+                "detector 7": self.arr7}
 
     def sanity_check(self, pings=SANITY_PINGS):
         """
