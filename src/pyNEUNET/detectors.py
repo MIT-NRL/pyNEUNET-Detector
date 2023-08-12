@@ -97,7 +97,7 @@ class Linear3HePSD:
         psd_number, position = translate_neutron_data(self.bytes_data)
         if position is not None:
             res = self.BINS-1 if position*self.BINS >= self.BINS else int(position*self.BINS)
-            self.histograms[f"detector {psd_number}"][0][res] += 1
+            self.histograms[f"detector {psd_number}"][1][res] += 1
             self.counts[f"detector {psd_number}"] += 1
 
     def read(self, seconds, test_label, format=None, save=True, verbose=False, fldr=""):
@@ -134,8 +134,8 @@ class Linear3HePSD:
         self.sock.connect((self.ip, self.tcp_port))
         if verbose:
             print("Connected")
-        blank_array = np.array([[0 for i in range(self.BINS)],
-                                [to_physical_position(i/self.BINS) for i in range(self.BINS)]])
+        blank_array = np.array([[to_physical_position(i/self.BINS) for i in range(self.BINS)],
+                                [0 for i in range(self.BINS)]])
         self.counts = {}
         self.histograms = {}
         for i in self.psd_nums:
@@ -171,6 +171,14 @@ class Linear3HePSD:
             print(f"Exposure time: {self.elapsed_time} s")
         self.sock.close()
 
+        fig, (ax0) = plt.subplots(1, 1)
+        for i in self.psd_nums:
+            ax0.plot(self.self.histograms[f"detector {i}"], label=f"detector {i}")
+        ax0.legend()
+        ax0.xlabel("position (mm)")
+        ax0.ylabel("neutron count")
+        fig.title(test_label)
+        
         if save:
             if fldr:
                 if fldr[-1] != "/":
@@ -180,12 +188,8 @@ class Linear3HePSD:
                 np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.histograms[f"detector {i}"],
                            header=f"detector {i}, start: {self.start_time}; \
                             column 1 = decimal position, column 2 = physical position (mm).")
-                plt.plot(self.self.histograms[f"detector {i}"], label=f"detector {i}")
-            plt.legend()
-            plt.xlabel("position")
-            plt.ylabel("neutron count")
-            plt.title(test_label)
-            plt.savefig(f"{test_label}_graph.png")
+            fig.savefig(test_label+"_graph.png")
+        fig.show()
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
