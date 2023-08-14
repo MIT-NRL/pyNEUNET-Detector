@@ -38,6 +38,8 @@ class Linear3HePSD:
         udp_port: int, optional
                 Port number for UDP connection
         """
+        self.name = "Linear3HePSD"
+        self.parent = None
         self.__ip = ip_address
         self.__tcp_port = tcp_port
         self.__udp_port = udp_port
