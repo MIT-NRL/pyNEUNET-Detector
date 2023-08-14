@@ -33,8 +33,8 @@ def register_readwrite(IP='192.168.0.17',
                                              )        
         if printOutput:
                 print(f"Send: {sendBytes.hex(':')}\n",
-                      f"Header : {recvData[:8].hex(':')}\n",
-                      f"Data : {recvData[8:].hex(':')}")
+                      f"Header: {recvData[:8].hex(':')}\n",
+                      f"Data: {recvData[8:].hex(':')}")
         return recvData
 
 
