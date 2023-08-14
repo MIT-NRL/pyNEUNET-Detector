@@ -53,23 +53,23 @@ class Linear3HePSD:
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
         '''
         #Set time to 32-bit mode
-        responseByte = register_readwrite(address=0x18a,data=0x80)
+        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x18a,data=0x80)
 
         #First send the computer time to the instrument
         if verbose:
             print(f"Detector time before setting: \
-                  {instrument_time(register_readwrite(address=0x190, length=5)[8:], mode='datetime')}")
+                  {instrument_time(register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, length=5)[8:], mode='datetime')}")
         # print(type(instrument_time()+bytes([0x00, 0x00])))
-        responseByte = register_readwrite(address=0x190, data=instrument_time()+bytes([0x00,0x00]))
+        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, data=instrument_time()+bytes([0x00,0x00]))
         if verbose:
             print(f"Detector time after setting: \
-                  {instrument_time(register_readwrite(address=0x190, length=5)[8:], mode='datetime')}")
+                  {instrument_time(register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, length=5)[8:], mode='datetime')}")
 
         #Set event memory read mode
-        responseByte = register_readwrite(address=0x186, data=bytes(2))
+        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x186, data=bytes(2))
 
         #Set one-way mode and 14-bit (high-resolution) mode
-        responseByte = register_readwrite(address=0x1b4, data=[0x8a, 0x80])
+        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x1b4, data=[0x8a, 0x80])
 
         self.__staged = True
         if verbose:
