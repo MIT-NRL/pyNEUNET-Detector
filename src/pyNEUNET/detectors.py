@@ -146,7 +146,7 @@ class Linear3HePSD:
             self.__counts[f"detector {i}"] = 0
             self.__histograms[f"detector {i}"] = np.copy(blank_array)
         self.__start_time = 0
-        self.__current_time = 0
+        current_time = 0
         
         if not self.__staged:
             self.stage(verbose)
@@ -159,19 +159,19 @@ class Linear3HePSD:
                 self.__start_time = instrument_time(self.__bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
-        while self.__current_time - self.__start_time < self.__exposure_time:
+        while current_time - self.__start_time < self.__exposure_time:
             self.collect_8bytes()
             if self.__bytes_data[0] == self.NEUTRON_EVENT:
                 self._count_neutron()
             elif self.__bytes_data[0] == self.INST_TIME:
-                self.__current_time = instrument_time(self.__bytes_data[1:])
-        self.__elapsed_time = self.__current_time - self.__start_time
+                current_time = instrument_time(self.__bytes_data[1:])
+        elapsed_time = current_time - self.__start_time
         if verbose:
             print(f"Completed collecting neutron counts")
             for i in self.__psd_nums:
                   print(f"Total counts from detector {i}: {self.__counts[f'detector {i}']}")
 
-            print(f"Exposure time: {self.__elapsed_time} s")
+            print(f"Exposure time: {elapsed_time} s")
         self.__tcp_sock.close()
 
         fig, (ax0) = plt.subplots(1, 1)
@@ -196,15 +196,33 @@ class Linear3HePSD:
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
+            start_timestamp = instrument_time(self.__start_time).timestamp()
+            # TODO: The "value" field has to be JSON encodable (for our purposes, a number, string, or array)
             result = OrderedDict()
             for i in self.__psd_nums:
                 result[f"detector {i}"] = {"value": self.__histograms[f"detector {i}"],
-                                           "timestamp": instrument_time(self.__start_time).timestamp()}
+                                           "timestamp": start_timestamp}
+            result["elapsed time"] = {"value": elapsed_time,
+                                      "timestamp": start_timestamp}
             if verbose:
                 print(result)
             return result
         
-        return instrument_time(self.__start_time).timestamp(), self.__histograms
+        return start_timestamp, elapsed_time, self.__histograms
+    
+    def describe(self):
+        """
+        Returns bluesky-compatible OrderedDict describing output data
+        """
+        description = OrderedDict()
+        for i in self.__psd_nums:
+            description[f"detector {i}"] = {"source": f"detector {i}",
+                                            "dtype": "array",
+                                            "shape": [self.BINS, 2]}
+        description["elapsed time"] = {"source": "n/a",
+                                       "dtype": "number",
+                                       "shape": []}
+        return description
 
     def sanity_check(self, pings=100):
         """
