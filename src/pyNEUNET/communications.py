@@ -17,14 +17,11 @@ def register_readwrite(IP='192.168.0.17',
         if data is not None:
                 if verbose:
                        print(f"data to write: {data}")
-                if not isinstance(data,list):
+                if not isinstance(data,(list,bytes,bytearray)):
                         data = [data]
                         if verbose:
                                print(f"data as list: {data}")
-                if isinstance(data[0], bytes):
-                       sendBytes += b''.join(data)
-                else:
-                       sendBytes += bytearray(data)
+                sendBytes += bytearray(data)
                 if verbose:
                         print(f"message with data: {sendBytes}")
                 sendBytes[1] = modeWrite
