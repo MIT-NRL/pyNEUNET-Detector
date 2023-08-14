@@ -10,8 +10,8 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from translaters import instrument_time, translate_neutron_data, to_physical_position
-from communications import register_readwrite, read_full_register
+from .translaters import instrument_time, translate_neutron_data, to_physical_position
+from .communications import register_readwrite, read_full_register
 
 class Linear3HePSD:
     '''
