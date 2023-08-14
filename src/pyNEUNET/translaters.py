@@ -13,7 +13,7 @@ EFFECT_LEN_MM = 150
 ANODE_RES = 1.5 # kilo-ohms
 PREAMP_RES = 1
 
-def translate_neutron_data(bin_data):
+def translate_neutron_data(bin_data, type=14):
     """
     Translates 8-byte neutron data
 
@@ -21,6 +21,8 @@ def translate_neutron_data(bin_data):
     -------
     bin_data: bytes
             8-byte binary data from detector
+    type: int (12 or 14)
+            12-bit or 14-bit (resolution level) data
     
     Returns
     -------
@@ -30,10 +32,16 @@ def translate_neutron_data(bin_data):
             Value ranging from 0 to 1 corresponding to position on detector
             See to_physical_position function to convert to physical position
     """
-    nanoseconds = 25*10**-9*(2**16*bin_data[1] + 2**8*bin_data[2] + bin_data[3])
-    psd_number = (bin_data[4] // 2**4) % 2**3
-    pl = 2**10*(bin_data[4] % 2**4) + 2**2*bin_data[5] + bin_data[6] // 2**6
-    pr = 2**8*(bin_data[6] % 2**6) + bin_data[7]
+    if type == 12:
+        nanoseconds = 25*10**-9*(2**16*bin_data[1] + 2**8*bin_data[2] + bin_data[3])
+        psd_number = bin_data[4] % 2**3
+        pl =2**4*bin_data[5] + bin_data[6] // 2**4
+        pr = 2**8*(bin_data[6] % 2**4) + bin_data[7]
+    elif type == 14:
+        nanoseconds = 25*10**-9*(2**16*bin_data[1] + 2**8*bin_data[2] + bin_data[3])
+        psd_number = (bin_data[4] // 2**4) % 2**3
+        pl = 2**10*(bin_data[4] % 2**4) + 2**2*bin_data[5] + bin_data[6] // 2**6
+        pr = 2**8*(bin_data[6] % 2**6) + bin_data[7]
     pulse_height = pl + pr
     try:
         position = pl/pulse_height
@@ -83,7 +91,7 @@ def instrument_time(input=None,mode='seconds'):
         return secondsBytes + subsecondsBytes
     elif isinstance(input,(bytes,bytearray)):
         intSeconds = int.from_bytes(input[:4],'big')
-        intSubSeconds = input[5]
+        intSubSeconds = input[4]
         secondsSince2008 = intSeconds + (intSubSeconds / 2**8)
         if mode == 'seconds':
             return secondsSince2008

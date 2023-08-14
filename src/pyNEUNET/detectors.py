@@ -10,8 +10,8 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from translaters import instrument_time, translate_neutron_data, to_physical_position
-from communications import register_readwrite, read_full_register
+from .translaters import instrument_time, translate_neutron_data, to_physical_position
+from .communications import register_readwrite, read_full_register
 
 class Linear3HePSD:
     '''
@@ -52,9 +52,28 @@ class Linear3HePSD:
         '''
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
         '''
-        register_readwrite(IP=self.__ip, port=self.__udp_port, printOutput=verbose)
+        #Set time to 32-bit mode
+        responseByte = register_readwrite(address=0x18a,data=0x80)
+
+        #First send the computer time to the instrument
+        if verbose:
+            print(f"Detector time before setting: \
+                  {instrument_time(register_readwrite(address=0x190, length=5)[8:], mode='datetime')}")
+        # print(type(instrument_time()+bytes([0x00, 0x00])))
+        responseByte = register_readwrite(address=0x190, data=instrument_time()+bytes([0x00,0x00]))
+        if verbose:
+            print(f"Detector time after setting: \
+                  {instrument_time(register_readwrite(address=0x190, length=5)[8:], mode='datetime')}")
+
+        #Set event memory read mode
+        responseByte = register_readwrite(address=0x186, data=bytes(2))
+
+        #Set one-way mode and 14-bit (high-resolution) mode
+        responseByte = register_readwrite(address=0x1b4, data=[0x8a, 0x80])
+
         self.__staged = True
-        # need more
+        if verbose:
+            print("Finished staging")
 
     def unstage(self):
         '''
@@ -106,7 +125,7 @@ class Linear3HePSD:
             self.__counts[f"detector {psd_number}"] += 1
             self.__histograms[f"detector {psd_number}"][1][res] += 1
 
-    def read(self, test_label=None, format="bluesky", save=False, verbose=False, fldr=""):
+    def read(self, test_label="", format="bluesky", graph=False, save=False, verbose=False, fldr=""):
         """"
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
@@ -117,11 +136,14 @@ class Linear3HePSD:
                 Name of files and graph
         format: str, optional
                 Format of output
-                If "bluesky", output is a bluesky-compatible OrderedDict
-                Otherwise (default), output is a tuple containing start time and histograms
+                If "bluesky" (default), output is a bluesky-compatible OrderedDict containing histograms and elapsed time
+                Otherwise, output is a tuple containing start time, elapsed time, and histograms
+        save: boolean, optional
+                Whether to graph histogram data
+                Default is False
         save: boolean, optional
                 Whether to save histogram data and graph onto computer
-                Default is True
+                Default is False
         verbose: boolean, optional
                 Whether to print indications that code is working
                 Default is False
@@ -174,13 +196,14 @@ class Linear3HePSD:
             print(f"Exposure time: {elapsed_time} s")
         self.__tcp_sock.close()
 
-        # fig, (ax0) = plt.subplots(1, 1)
-        # for i in self.__psd_nums:
-        #     ax0.plot(self.self.__histograms[f"detector {i}"], label=f"detector {i}")
-        # ax0.legend()
-        # ax0.xlabel("position (mm)")
-        # ax0.ylabel("neutron count")
-        # fig.title(test_label)
+        if graph:
+            fig, (ax0) = plt.subplots(1, 1)
+            for i in self.__psd_nums:
+                ax0.plot(self.__histograms[f"detector {i}"][0], self.__histograms[f"detector {i}"][1], label=f"detector {i}")
+            ax0.legend()
+            ax0.set_xlabel("position (mm)")
+            ax0.set_ylabel("neutron count")
+            ax0.set_title(f"Neutron counts v. position")
 
         if save:
             if fldr:
@@ -191,8 +214,9 @@ class Linear3HePSD:
                 np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.__histograms[f"detector {i}"],
                            header=f"detector {i}, start: {self.__start_time}; \
                             column 1 = physical position (mm), column 2 = counts per position.")
-            fig.savefig(test_label+"_graph.png")
-            fig.show()
+            if graph:
+                fig.savefig(test_label+"_graph.png")
+                fig.show()
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
@@ -238,21 +262,19 @@ class Linear3HePSD:
         print("Connected")
         if not self.__staged:
             self.stage(True)
-        print("Staged")
-        print(self.__tcp_sock.recv(1))
         self.collect_8bytes(offset=False)
-        print(self.__bytes_data)
-        print(self.__bytes_data.hex(":"))
+        print(f"Bytes format: {self.__bytes_data}")
+        print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
         for i in range(pings-1):
             self.collect_8bytes()
-            print(self.__bytes_data)
-            print(self.__bytes_data.hex(":"))
-            print(self.__bytes_data[0])
+            print(f"Bytes format: {self.__bytes_data}")
+            print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
             if self.__bytes_data[0] == self.NEUTRON_EVENT:
-                print(translate_neutron_data(self.__bytes_data))
+                print(f"Neutron data: {translate_neutron_data(self.__bytes_data)}")
             elif self.__bytes_data[0] == self.INST_TIME:
-                print(instrument_time(self.__bytes_data[1:], mode="datetime"))
+                print(f"Instrument time: {instrument_time(self.__bytes_data[1:], mode='datetime')}")
         self.__tcp_sock.close()
+        print("Closed socket")
     
     @property
     def exposure_time(self):
@@ -265,8 +287,10 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    output = obj.read()
-    print(output)
+    # obj.sanity_check()
+    # obj.exposure_time = 60
+    # output = obj.read(test_label="8_14_2023_try", graph=True, save=True, fldr="c:/Users/4DH4/Desktop/pyneunet_output", verbose=True)
+    # print(output)
 
 if __name__ == '__main__':
     main()
