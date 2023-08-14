@@ -106,7 +106,7 @@ class Linear3HePSD:
             self.__counts[f"detector {psd_number}"] += 1
             self.__histograms[f"detector {psd_number}"][1][res] += 1
 
-    def read(self, test_label, format="bluesky", save=True, verbose=False, fldr=""):
+    def read(self, test_label=None, format="bluesky", save=False, verbose=False, fldr=""):
         """"
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
@@ -174,13 +174,13 @@ class Linear3HePSD:
             print(f"Exposure time: {elapsed_time} s")
         self.__tcp_sock.close()
 
-        fig, (ax0) = plt.subplots(1, 1)
-        for i in self.__psd_nums:
-            ax0.plot(self.self.__histograms[f"detector {i}"], label=f"detector {i}")
-        ax0.legend()
-        ax0.xlabel("position (mm)")
-        ax0.ylabel("neutron count")
-        fig.title(test_label)
+        # fig, (ax0) = plt.subplots(1, 1)
+        # for i in self.__psd_nums:
+        #     ax0.plot(self.self.__histograms[f"detector {i}"], label=f"detector {i}")
+        # ax0.legend()
+        # ax0.xlabel("position (mm)")
+        # ax0.ylabel("neutron count")
+        # fig.title(test_label)
 
         if save:
             if fldr:
@@ -192,7 +192,7 @@ class Linear3HePSD:
                            header=f"detector {i}, start: {self.__start_time}; \
                             column 1 = physical position (mm), column 2 = counts per position.")
             fig.savefig(test_label+"_graph.png")
-        fig.show()
+            fig.show()
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
@@ -234,6 +234,7 @@ class Linear3HePSD:
                 Number of packets to print
                 Default is 100
         """
+        self.__tcp_sock.connect((self.__ip, self.__tcp_port))
         print("Connected")
         if not self.__staged:
             self.stage(True)
@@ -264,7 +265,8 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    # obj.sanity_check()
+    output = obj.read()
+    print(output)
 
 if __name__ == '__main__':
     main()
