@@ -10,8 +10,8 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from .translaters import instrument_time, translate_neutron_data, to_physical_position
-from .communications import register_readwrite, read_full_register
+from translaters import instrument_time, translate_neutron_data, to_physical_position
+from communications import register_readwrite, read_full_register
 
 class Linear3HePSD:
     '''
@@ -23,6 +23,7 @@ class Linear3HePSD:
     TRIGGER_ID = 0x5b
     INST_TIME = 0x6c
     START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
+    TIMEOUT = 5
     
     def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums=[0, 7], exposure_time=10):
         """
@@ -44,9 +45,6 @@ class Linear3HePSD:
         self.__tcp_port = tcp_port
         self.__udp_port = udp_port
         self.__psd_nums = psd_nums
-        self.__tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        self.__tcp_sock.settimeout(5)
-        self.__udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__staged = False
         self.__exposure_time = exposure_time
 
@@ -88,7 +86,7 @@ class Linear3HePSD:
         self.__staged = False
         # need more
 
-    def collect_8bytes(self, offset=False, verbose=False):
+    def collect_8bytes(self, sock, offset=False, verbose=False):
         """
         Collect 8 bytes from already connected detector
         Bytes collected 1-by-1 due to socket's unpredictability re length of data
@@ -102,22 +100,22 @@ class Linear3HePSD:
                 Whether to print out data as it comes in
         """
         if offset:
-            recv_byte = self.__tcp_sock.recv(1)
+            recv_byte = sock.recv(1)
             if verbose:
                 print(recv_byte)
             while recv_byte[0] not in self.START_BYTES:
-                recv_byte = self.__tcp_sock.recv(1)
+                recv_byte = sock.recv(1)
                 if verbose:
                     print(recv_byte.hex())
             self.__bytes_data = recv_byte
             for i in range(7):
-                self.__bytes_data += self.__tcp_sock.recv(1)
+                self.__bytes_data += sock.recv(1)
             if recv_byte[0] == self.INST_TIME:
                 self.__start_time = instrument_time(recv_byte)
         else:
             self.__bytes_data = bytes()
             for i in range(8):
-                self.__bytes_data += self.__tcp_sock.recv(1)
+                self.__bytes_data += sock.recv(1)
         if verbose:
             print("Data: " + self.__bytes_data.hex(":"))
 
@@ -163,7 +161,9 @@ class Linear3HePSD:
         result: OrderedDict or tuple
                 Stores histograms for each detector and start time for data collection
         """
-        self.__tcp_sock.connect((self.__ip, self.__tcp_port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        sock.settimeout(self.TIMEOUT)
+        sock.connect((self.__ip, self.__tcp_port))
         if verbose:
             print("Connected")
         blank_array = np.array([[to_physical_position(i/self.BINS) for i in range(self.BINS)],
@@ -178,17 +178,17 @@ class Linear3HePSD:
         
         if not self.__staged:
             self.stage(verbose)
-        self.collect_8bytes(offset=True)
+        self.collect_8bytes(sock, offset=True)
         if verbose:
             print("Started collecting")
         while not self.__start_time:
-            self.collect_8bytes()
+            self.collect_8bytes(sock)
             if self.__bytes_data[0] == self.INST_TIME:
                 self.__start_time = instrument_time(self.__bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
         while current_time - self.__start_time < self.__exposure_time:
-            self.collect_8bytes()
+            self.collect_8bytes(sock)
             if self.__bytes_data[0] == self.NEUTRON_EVENT:
                 self._count_neutron()
             elif self.__bytes_data[0] == self.INST_TIME:
@@ -200,7 +200,7 @@ class Linear3HePSD:
                   print(f"Total counts from detector {i}: {self.__counts[f'detector {i}']}")
 
             print(f"Exposure time: {elapsed_time} s")
-        self.__tcp_sock.close()
+        sock.close()
 
         if graph:
             fig, (ax0) = plt.subplots(1, 1)
@@ -264,22 +264,24 @@ class Linear3HePSD:
                 Number of packets to print
                 Default is 100
         """
-        self.__tcp_sock.connect((self.__ip, self.__tcp_port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        sock.settimeout(self.TIMEOUT)
+        sock.connect((self.__ip, self.__tcp_port))
         print("Connected")
         if not self.__staged:
             self.stage(True)
-        self.collect_8bytes(offset=False)
+        self.collect_8bytes(sock, offset=False)
         print(f"Bytes format: {self.__bytes_data}")
         print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
         for i in range(pings-1):
-            self.collect_8bytes()
+            self.collect_8bytes(sock)
             print(f"Bytes format: {self.__bytes_data}")
             print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
             if self.__bytes_data[0] == self.NEUTRON_EVENT:
                 print(f"Neutron data: {translate_neutron_data(self.__bytes_data)}")
             elif self.__bytes_data[0] == self.INST_TIME:
                 print(f"Instrument time: {instrument_time(self.__bytes_data[1:], mode='datetime')}")
-        self.__tcp_sock.close()
+        sock.close()
         print("Closed socket")
     
     @property
@@ -293,7 +295,13 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    # obj.sanity_check()
+    obj.sanity_check()
+    # obj.exposure_time = 15
+    # output = obj.read()
+    # print(output)
+    # obj.exposure_time = 10
+    # output_2 = obj.read()
+    # print(output_2)
     # obj.exposure_time = 60
     # output = obj.read(test_label="8_14_2023_try", graph=True, save=True, fldr="c:/Users/4DH4/Desktop/pyneunet_output", verbose=True)
     # print(output)
