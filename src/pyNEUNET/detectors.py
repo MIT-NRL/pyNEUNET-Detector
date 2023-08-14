@@ -79,6 +79,10 @@ class Linear3HePSD:
         '''
         Shuts down and clears the NEUNET system register.
         '''
+
+        #Set handshake mode
+        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x1b5, data=[0x00])
+
         self.__staged = False
         # need more
 
