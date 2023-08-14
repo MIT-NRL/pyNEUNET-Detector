@@ -38,29 +38,29 @@ class Linear3HePSD:
         udp_port: int, optional
                 Port number for UDP connection
         """
-        self.ip = ip_address
-        self.tcp_port = tcp_port
-        self.udp_port = udp_port
-        self.psd_nums = psd_nums
-        self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        self.tcp_sock.settimeout(5)
-        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.staged = False
-        self.exposure_time = exposure_time
+        self.__ip = ip_address
+        self.__tcp_port = tcp_port
+        self.__udp_port = udp_port
+        self.__psd_nums = psd_nums
+        self.__tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.__tcp_sock.settimeout(5)
+        self.__udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__staged = False
+        self.__exposure_time = exposure_time
 
     def stage(self, verbose=False):
         '''
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
         '''
-        register_readwrite(IP=self.ip, port=self.udp_port, printOutput=verbose)
-        self.staged = True
+        register_readwrite(IP=self.__ip, port=self.__udp_port, printOutput=verbose)
+        self.__staged = True
         # need more
 
     def unstage(self):
         '''
         Shuts down and clears the NEUNET system register.
         '''
-        self.staged = False
+        self.__staged = False
         # need more
 
     def collect_8bytes(self, offset=False, verbose=False):
@@ -77,34 +77,34 @@ class Linear3HePSD:
                 Whether to print out data as it comes in
         """
         if offset:
-            recv_byte = self.tcp_sock.recv(1)
+            recv_byte = self.__tcp_sock.recv(1)
             if verbose:
                 print(recv_byte)
             while recv_byte[0] not in self.START_BYTES:
-                recv_byte = self.tcp_sock.recv(1)
+                recv_byte = self.__tcp_sock.recv(1)
                 if verbose:
                     print(recv_byte.hex())
-            self.bytes_data = recv_byte
+            self.__bytes_data = recv_byte
             for i in range(7):
-                self.bytes_data += self.tcp_sock.recv(1)
+                self.__bytes_data += self.__tcp_sock.recv(1)
             if recv_byte[0] == self.INST_TIME:
-                self.start_time = instrument_time(recv_byte)
+                self.__start_time = instrument_time(recv_byte)
         else:
-            self.bytes_data = bytes()
+            self.__bytes_data = bytes()
             for i in range(8):
-                self.bytes_data += self.tcp_sock.recv(1)
+                self.__bytes_data += self.__tcp_sock.recv(1)
         if verbose:
-            print("Data: " + self.bytes_data.hex(":"))
+            print("Data: " + self.__bytes_data.hex(":"))
 
     def _count_neutron(self):
         """
         Counts the neutron event and adds it to the histogram
         """
-        psd_number, position = translate_neutron_data(self.bytes_data)
+        psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
             res = self.BINS-1 if position*self.BINS >= self.BINS else int(position*self.BINS)
-            self.counts[f"detector {psd_number}"] += 1
-            self.histograms[f"detector {psd_number}"][1][res] += 1
+            self.__counts[f"detector {psd_number}"] += 1
+            self.__histograms[f"detector {psd_number}"][1][res] += 1
 
     def read(self, test_label, format="bluesky", save=True, verbose=False, fldr=""):
         """"
@@ -135,51 +135,48 @@ class Linear3HePSD:
         result: OrderedDict or tuple
                 Stores histograms for each detector and start time for data collection
         """
-        self.tcp_sock.connect((self.ip, self.tcp_port))
+        self.__tcp_sock.connect((self.__ip, self.__tcp_port))
         if verbose:
             print("Connected")
         blank_array = np.array([[to_physical_position(i/self.BINS) for i in range(self.BINS)],
                                 [0 for i in range(self.BINS)]])
-        self.counts = {}
-        self.histograms = {}
-        for i in self.psd_nums:
-            self.counts[f"detector {i}"] = 0
-            self.histograms[f"detector {i}"] = np.copy(blank_array)
-        self.start_time = 0
-        self.current_time = 0
+        self.__counts = {}
+        self.__histograms = {}
+        for i in self.__psd_nums:
+            self.__counts[f"detector {i}"] = 0
+            self.__histograms[f"detector {i}"] = np.copy(blank_array)
+        self.__start_time = 0
+        self.__current_time = 0
         
-        if not self.staged:
+        if not self.__staged:
             self.stage(verbose)
         self.collect_8bytes(offset=True)
         if verbose:
             print("Started collecting")
-        while not self.start_time:
+        while not self.__start_time:
             self.collect_8bytes()
-            # We probably don't want to count neutrons until time starts
-            # if self.bytes_data[0] == NEUTRON_EVENT:
-            #     self._count_neutron()
-            if self.bytes_data[0] == self.INST_TIME:
-                self.start_time = instrument_time(self.bytes_data[1:])
+            if self.__bytes_data[0] == self.INST_TIME:
+                self.__start_time = instrument_time(self.__bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
-        while self.current_time - self.start_time < self.exposure_time:
+        while self.__current_time - self.__start_time < self.__exposure_time:
             self.collect_8bytes()
-            if self.bytes_data[0] == self.NEUTRON_EVENT:
+            if self.__bytes_data[0] == self.NEUTRON_EVENT:
                 self._count_neutron()
-            elif self.bytes_data[0] == self.INST_TIME:
-                self.current_time = instrument_time(self.bytes_data[1:])
-        self.elapsed_time = self.current_time - self.start_time
+            elif self.__bytes_data[0] == self.INST_TIME:
+                self.__current_time = instrument_time(self.__bytes_data[1:])
+        self.__elapsed_time = self.__current_time - self.__start_time
         if verbose:
             print(f"Completed collecting neutron counts")
-            for i in self.psd_nums:
-                  print(f"Total counts from detector {i}: {self.counts[f'detector {i}']}")
+            for i in self.__psd_nums:
+                  print(f"Total counts from detector {i}: {self.__counts[f'detector {i}']}")
 
-            print(f"Exposure time: {self.elapsed_time} s")
-        self.tcp_sock.close()
+            print(f"Exposure time: {self.__elapsed_time} s")
+        self.__tcp_sock.close()
 
         fig, (ax0) = plt.subplots(1, 1)
-        for i in self.psd_nums:
-            ax0.plot(self.self.histograms[f"detector {i}"], label=f"detector {i}")
+        for i in self.__psd_nums:
+            ax0.plot(self.self.__histograms[f"detector {i}"], label=f"detector {i}")
         ax0.legend()
         ax0.xlabel("position (mm)")
         ax0.ylabel("neutron count")
@@ -190,9 +187,9 @@ class Linear3HePSD:
                 if fldr[-1] != "/":
                     fldr += "/"
                 test_label = fldr + test_label
-            for i in self.psd_nums:
-                np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.histograms[f"detector {i}"],
-                           header=f"detector {i}, start: {self.start_time}; \
+            for i in self.__psd_nums:
+                np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.__histograms[f"detector {i}"],
+                           header=f"detector {i}, start: {self.__start_time}; \
                             column 1 = physical position (mm), column 2 = counts per position.")
             fig.savefig(test_label+"_graph.png")
         fig.show()
@@ -200,14 +197,14 @@ class Linear3HePSD:
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
             result = OrderedDict()
-            for i in self.psd_nums:
-                result[f"detector {i}"] = {"value": self.histograms[f"detector {i}"],
-                                           "timestamp": instrument_time(self.start_time).timestamp()}
+            for i in self.__psd_nums:
+                result[f"detector {i}"] = {"value": self.__histograms[f"detector {i}"],
+                                           "timestamp": instrument_time(self.__start_time).timestamp()}
             if verbose:
                 print(result)
             return result
         
-        return instrument_time(self.start_time).timestamp(), self.histograms
+        return instrument_time(self.__start_time).timestamp(), self.__histograms
 
     def sanity_check(self, pings=100):
         """
@@ -220,37 +217,36 @@ class Linear3HePSD:
                 Default is 100
         """
         print("Connected")
-        if not self.staged:
+        if not self.__staged:
             self.stage(True)
         print("Staged")
-        print(self.tcp_sock.recv(1))
+        print(self.__tcp_sock.recv(1))
         self.collect_8bytes(offset=False)
-        print(self.bytes_data)
-        print(self.bytes_data.hex(":"))
+        print(self.__bytes_data)
+        print(self.__bytes_data.hex(":"))
         for i in range(pings-1):
             self.collect_8bytes()
-            print(self.bytes_data)
-            print(self.bytes_data.hex(":"))
-            print(self.bytes_data[0])
-            if self.bytes_data[0] == self.NEUTRON_EVENT:
-                print(translate_neutron_data(self.bytes_data))
-            elif self.bytes_data[0] == self.INST_TIME:
-                print(instrument_time(self.bytes_data[1:], mode="datetime"))
-        self.tcp_sock.close()
+            print(self.__bytes_data)
+            print(self.__bytes_data.hex(":"))
+            print(self.__bytes_data[0])
+            if self.__bytes_data[0] == self.NEUTRON_EVENT:
+                print(translate_neutron_data(self.__bytes_data))
+            elif self.__bytes_data[0] == self.INST_TIME:
+                print(instrument_time(self.__bytes_data[1:], mode="datetime"))
+        self.__tcp_sock.close()
     
     @property
     def exposure_time(self):
-        return self.exposure_time
+        return self.__exposure_time
     
     @exposure_time.setter
     def exposure_time(self, input):
-        self.exposure_time = input
+        self.__exposure_time = input
 
 
 def main():
     obj = Linear3HePSD()
-    obj.sanity_check()
-# obj.start(10, "test 2 columns", True, True)
+    # obj.sanity_check()
 
 if __name__ == '__main__':
     main()
