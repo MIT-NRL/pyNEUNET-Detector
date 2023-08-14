@@ -23,9 +23,8 @@ class Linear3HePSD:
     TRIGGER_ID = 0x5b
     INST_TIME = 0x6c
     START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
-    EXPOSURE_TIME = 10
     
-    def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums = [0, 7]):
+    def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums=[0, 7], exposure_time=10):
         """
         Creates new socket object linked to detectors
         Default inputs given by Canon documentation for TCP connection
@@ -47,6 +46,7 @@ class Linear3HePSD:
         self.tcp_sock.settimeout(5)
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.staged = False
+        self.exposure_time = exposure_time
 
     def stage(self, verbose=False):
         '''
@@ -106,7 +106,7 @@ class Linear3HePSD:
             self.counts[f"detector {psd_number}"] += 1
             self.histograms[f"detector {psd_number}"][1][res] += 1
 
-    def read(self, test_label, format=None, save=True, verbose=False, fldr=""):
+    def read(self, test_label, format="bluesky", save=True, verbose=False, fldr=""):
         """"
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
@@ -242,7 +242,7 @@ class Linear3HePSD:
     def exposure_time(self):
         return self.exposure_time
     
-    @exposure_time.getter
+    @exposure_time.setter
     def exposure_time(self, input):
         self.exposure_time = input
 
