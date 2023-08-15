@@ -8,7 +8,7 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
-from .translaters import instrument_time, translate_neutron_data, to_physical_position
+from .translaters import translate_instrument_time, translate_neutron_data, to_physical_position
 from .communications import register_readwrite
 
 class Linear3HePSD:
@@ -53,15 +53,11 @@ class Linear3HePSD:
 
         #First send the computer time to the instrument
         if verbose:
-            print("Detector time before setting:",
-                  instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
-                                                     length=5)[8:], mode="datetime"))
+            print("Detector time before setting:", self.instrument_time)
         responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
-                                          data=instrument_time()+bytes([0x00,0x00]))
+                                          data=translate_instrument_time()+bytes([0x00,0x00]))
         if verbose:
-            print("Detector time after setting:",
-                  instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
-                                                     length=5)[8:], mode='datetime'))
+            print("Detector time after setting:", self.instrument_time)
 
         #Set event memory read mode
         responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2))
@@ -107,7 +103,7 @@ class Linear3HePSD:
             for i in range(7):
                 self.__bytes_data += sock.recv(1)
             if recv_byte[0] == self.TCP_START_BYTES["instrument time"]:
-                self.__start_time = instrument_time(recv_byte)
+                self.__start_time = translate_instrument_time(recv_byte)
         else:
             self.__bytes_data = bytes()
             for i in range(8):
@@ -180,7 +176,7 @@ class Linear3HePSD:
         while not self.__start_time:
             self.collect_8bytes(sock)
             if self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
-                self.__start_time = instrument_time(self.__bytes_data[1:])
+                self.__start_time = translate_instrument_time(self.__bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
         while current_time - self.__start_time < self.__exposure_time:
@@ -188,7 +184,7 @@ class Linear3HePSD:
             if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
                 self._count_neutron()
             elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
-                current_time = instrument_time(self.__bytes_data[1:])
+                current_time = translate_instrument_time(self.__bytes_data[1:])
         elapsed_time = current_time - self.__start_time
         if verbose:
             print("Completed collecting neutron counts")
@@ -222,7 +218,7 @@ class Linear3HePSD:
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
-            start_timestamp = instrument_time(self.__start_time).timestamp()
+            start_timestamp = translate_instrument_time(self.__start_time).timestamp()
             # TODO: The "value" field has to be JSON encodable (for our purposes, a number, string, or array)
             result = OrderedDict()
             for i in self.__psd_nums:
@@ -276,7 +272,7 @@ class Linear3HePSD:
             if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
                 print("Neutron data:", translate_neutron_data(self.__bytes_data))
             elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
-                print("Instrument time:", instrument_time(self.__bytes_data[1:], mode="datetime"))
+                print("Instrument time:", translate_instrument_time(self.__bytes_data[1:], mode="datetime"))
         sock.close()
         print("Closed socket")
     
@@ -287,6 +283,11 @@ class Linear3HePSD:
     @exposure_time.setter
     def exposure_time(self, input):
         self.__exposure_time = input
+
+    @property
+    def instrument_time(self):
+        return translate_instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
+                                                  length=5)[8:], mode="datetime")
 
 
 def main():
