@@ -46,7 +46,7 @@ def translate_neutron_data(bin_data, type=14):
         position = None
     return psd_number, position
 
-def instrument_time(input=None,mode='seconds'):
+def translate_instrument_time(input=None,mode='seconds'):
     '''
     Function to convert time from bytes to seconds and the reverse.
     Time is defined as seconds since 2008 and stored in 5 bytes.
@@ -100,7 +100,7 @@ def to_physical_position(decimal_pos):
 def translate_trigger_id(bin_data):
     return bin_data[1], bin_data[2], bin_data[3:]
 
-def translate_instrument_time(bin_data):
+def from_bytes_instrument_time(bin_data):
     """
     Translates 8-byte instrument time data
 
