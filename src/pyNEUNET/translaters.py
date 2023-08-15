@@ -1,10 +1,7 @@
 """
 translaters.py
-Sabine Chu
-08-01-2023
-
-Translates data from detectors
-Formulae from Canon documentation ("Communication Protocol of NeuNET system-revA2.pdf")
+Sabine Chu, Sean Fayfar
+August 2023
 """
 
 from datetime import datetime, timedelta
@@ -48,26 +45,6 @@ def translate_neutron_data(bin_data, type=14):
     except ZeroDivisionError:
         position = None
     return psd_number, position
-
-def translate_instrument_time(bin_data):
-    """
-    Translates 8-byte instrument time data
-
-    Parameters
-    -------
-    bin_data: bytes
-            8-byte binary data from detector
-
-    Returns
-    -------
-    seconds: float
-            Number of seconds since 1/1/2008 0:00:00
-    """
-    seconds1 = 2**24*bin_data[1] + 2**16*bin_data[2] + 2**8*bin_data[3] + bin_data[4]
-    seconds2 = 2**-15*(2**7*bin_data[5] + bin_data[6] // 2**1)
-    seconds3 = 25*10**-8*(2**8*(bin_data[6] % 2**3) + bin_data[7])
-    seconds = seconds1 + seconds2 + seconds3
-    return seconds
 
 def instrument_time(input=None,mode='seconds'):
     '''
@@ -119,6 +96,26 @@ def to_physical_position(decimal_pos):
     physical_pos = (decimal_pos - 0.5)*EFFECT_LEN_MM*(ANODE_RES + 2*PREAMP_RES)/ANODE_RES
     return physical_pos
 
-# We don't use trigger data or TOF
+# NOT USED
 def translate_trigger_id(bin_data):
     return bin_data[1], bin_data[2], bin_data[3:]
+
+def translate_instrument_time(bin_data):
+    """
+    Translates 8-byte instrument time data
+
+    Parameters
+    -------
+    bin_data: bytes
+            8-byte binary data from detector
+
+    Returns
+    -------
+    seconds: float
+            Number of seconds since 1/1/2008 0:00:00
+    """
+    seconds1 = 2**24*bin_data[1] + 2**16*bin_data[2] + 2**8*bin_data[3] + bin_data[4]
+    seconds2 = 2**-15*(2**7*bin_data[5] + bin_data[6] // 2**1)
+    seconds3 = 25*10**-8*(2**8*(bin_data[6] % 2**3) + bin_data[7])
+    seconds = seconds1 + seconds2 + seconds3
+    return seconds

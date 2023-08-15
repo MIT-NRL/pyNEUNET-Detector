@@ -1,9 +1,7 @@
 """
-tcp_reader.py
-Sabine Chu
-08-01-2023
-
-Implements basic packet reader
+detectors.py
+Sabine Chu, Sean Fayfar
+August 2023
 """
 
 import socket
@@ -11,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from .translaters import instrument_time, translate_neutron_data, to_physical_position
-from .communications import register_readwrite, read_full_register
+from .communications import register_readwrite
 
 class Linear3HePSD:
     '''
@@ -19,10 +17,8 @@ class Linear3HePSD:
     built by Canon. The device is controlled with the NUENET system. 
     '''
     BINS = 1024
-    NEUTRON_EVENT = 0x5f
-    TRIGGER_ID = 0x5b
-    INST_TIME = 0x6c
-    START_BYTES = [NEUTRON_EVENT, TRIGGER_ID, INST_TIME]
+    UDP_ADDR = {"time mode": 0x18a, "device time": 0x190, "read/write": 0x186, "resolution": 0x1b4, "handshake/one-way": 0x1b5}
+    TCP_START_BYTES = {"neutron event": 0x5f, "trigger id": 0x5b, "instrument time": 0x6c}
     TIMEOUT = 5
     
     def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums=[0, 7], exposure_time=10):
@@ -53,23 +49,25 @@ class Linear3HePSD:
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
         '''
         #Set time to 32-bit mode
-        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x18a,data=0x80)
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["time mode"], data=0x80)
 
         #First send the computer time to the instrument
         if verbose:
-            print(f"Detector time before setting: \
-                  {instrument_time(register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, length=5)[8:], mode='datetime')}")
-        # print(type(instrument_time()+bytes([0x00, 0x00])))
-        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, data=instrument_time()+bytes([0x00,0x00]))
+            print("Detector time before setting:",
+                  instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
+                                                     length=5)[8:], mode="datetime"))
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
+                                          data=instrument_time()+bytes([0x00,0x00]))
         if verbose:
-            print(f"Detector time after setting: \
-                  {instrument_time(register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x190, length=5)[8:], mode='datetime')}")
+            print("Detector time after setting:",
+                  instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
+                                                     length=5)[8:], mode='datetime'))
 
         #Set event memory read mode
-        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x186, data=bytes(2))
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2))
 
-        #Set one-way mode and 14-bit (high-resolution) mode
-        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x1b4, data=[0x8a, 0x80])
+        #Set 14-bit (high-resolution) mode and one-way mode
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["usage"], data=[0x8a, 0x80])
 
         self.__staged = True
         if verbose:
@@ -79,12 +77,10 @@ class Linear3HePSD:
         '''
         Shuts down and clears the NEUNET system register.
         '''
-
         #Set handshake mode
-        responseByte = register_readwrite(IP=self.__ip,port=self.__udp_port,address=0x1b5, data=[0x00])
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["handshake/one-way"], data=[0x00])
 
         self.__staged = False
-        # need more
 
     def collect_8bytes(self, sock, offset=False, verbose=False):
         """
@@ -103,14 +99,14 @@ class Linear3HePSD:
             recv_byte = sock.recv(1)
             if verbose:
                 print(recv_byte)
-            while recv_byte[0] not in self.START_BYTES:
+            while recv_byte[0] not in self.TCP_START_BYTES:
                 recv_byte = sock.recv(1)
                 if verbose:
                     print(recv_byte.hex())
             self.__bytes_data = recv_byte
             for i in range(7):
                 self.__bytes_data += sock.recv(1)
-            if recv_byte[0] == self.INST_TIME:
+            if recv_byte[0] == self.TCP_START_BYTES["instrument time"]:
                 self.__start_time = instrument_time(recv_byte)
         else:
             self.__bytes_data = bytes()
@@ -142,7 +138,7 @@ class Linear3HePSD:
                 Format of output
                 If "bluesky" (default), output is a bluesky-compatible OrderedDict containing histograms and elapsed time
                 Otherwise, output is a tuple containing start time, elapsed time, and histograms
-        save: boolean, optional
+        graph: boolean, optional
                 Whether to graph histogram data
                 Default is False
         save: boolean, optional
@@ -159,7 +155,7 @@ class Linear3HePSD:
         Returns
         -------
         result: OrderedDict or tuple
-                Stores histograms for each detector and start time for data collection
+                Stores histograms for each detector, start time, elapsed time
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         sock.settimeout(self.TIMEOUT)
@@ -183,19 +179,19 @@ class Linear3HePSD:
             print("Started collecting")
         while not self.__start_time:
             self.collect_8bytes(sock)
-            if self.__bytes_data[0] == self.INST_TIME:
+            if self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 self.__start_time = instrument_time(self.__bytes_data[1:])
         if verbose:
             print("Reached first 'instrument time' data")
         while current_time - self.__start_time < self.__exposure_time:
             self.collect_8bytes(sock)
-            if self.__bytes_data[0] == self.NEUTRON_EVENT:
+            if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
                 self._count_neutron()
-            elif self.__bytes_data[0] == self.INST_TIME:
+            elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 current_time = instrument_time(self.__bytes_data[1:])
         elapsed_time = current_time - self.__start_time
         if verbose:
-            print(f"Completed collecting neutron counts")
+            print("Completed collecting neutron counts")
             for i in self.__psd_nums:
                   print(f"Total counts from detector {i}: {self.__counts[f'detector {i}']}")
 
@@ -271,16 +267,16 @@ class Linear3HePSD:
         if not self.__staged:
             self.stage(True)
         self.collect_8bytes(sock, offset=False)
-        print(f"Bytes format: {self.__bytes_data}")
-        print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
+        print("Bytes format:", self.__bytes_data)
+        print("Hexadecimal:", self.__bytes_data.hex(':'))
         for i in range(pings-1):
             self.collect_8bytes(sock)
-            print(f"Bytes format: {self.__bytes_data}")
-            print(f"Hexadecimal: {self.__bytes_data.hex(':')}")
-            if self.__bytes_data[0] == self.NEUTRON_EVENT:
-                print(f"Neutron data: {translate_neutron_data(self.__bytes_data)}")
-            elif self.__bytes_data[0] == self.INST_TIME:
-                print(f"Instrument time: {instrument_time(self.__bytes_data[1:], mode='datetime')}")
+            print("Bytes format:", self.__bytes_data)
+            print("Hexadecimal:", self.__bytes_data.hex(':'))
+            if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
+                print("Neutron data:", translate_neutron_data(self.__bytes_data))
+            elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
+                print("Instrument time:", instrument_time(self.__bytes_data[1:], mode="datetime"))
         sock.close()
         print("Closed socket")
     

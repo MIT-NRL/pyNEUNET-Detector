@@ -1,10 +1,13 @@
-# Useful TCP/UDP function for communicating with the NEUNET system
+"""
+communications.py
+Sabine Chu, Sean Fayfar
+August 2023
+"""
+
 import socket
 from numpy.random import randint
 
-
-def register_readwrite(IP='192.168.0.17',
-                  port=4660,ID=None,length=1,address=0x80,data=None,verbose=False):
+def register_readwrite(IP, port, address, ID=None, length=1, data=None, verbose=False):
         '''
         Reads/writes to the register of the NEUNET board using UDP protocol.
         '''
