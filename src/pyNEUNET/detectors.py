@@ -14,7 +14,7 @@ from .communications import register_readwrite
 class Linear3HePSD:
     '''
     Linear 3He position sensitive neutron detector with a resolution of 5 mm
-    built by Canon. The device is controlled with the NUENET system. 
+    built by Canon. The device is controlled with the NEUNET system. 
     '''
     BINS = 1024
     UDP_ADDR = {"time mode": 0x18a, "device time": 0x190, "read/write": 0x186, "resolution": 0x1b4, "handshake/one-way": 0x1b5}
