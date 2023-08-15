@@ -292,7 +292,8 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    obj.sanity_check()
+    # obj.stage(True)
+    # obj.sanity_check()
     # obj.exposure_time = 15
     # output = obj.read()
     # print(output)

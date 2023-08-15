@@ -37,6 +37,7 @@ def register_readwrite(IP, port, address, ID=None, length=1, data=None, verbose=
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sockUDP:
                 sockUDP.sendto(sendBytes,(IP,port))
                 recvData = sockUDP.recv(1024)
+                sockUDP.close()
         flagByte = recvData[1] % 2**4
         if flagByte % 2**1:
                 raise ConnectionRefusedError('Bus error! Check the format of the sent packet.',
