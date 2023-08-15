@@ -67,7 +67,7 @@ class Linear3HePSD:
         responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2))
 
         #Set 14-bit (high-resolution) mode and one-way mode
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["usage"], data=[0x8a, 0x80])
+        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["resolution"], data=[0x8a, 0x80])
 
         self.__staged = True
         if verbose:
