@@ -65,7 +65,7 @@ def translate_instrument_time(inp=None, mode='seconds'):
         subseconds_bytes = int(seconds_since_2008 % 1 * 2**8).to_bytes(1,'big')
         return seconds_bytes + subseconds_bytes
     if isinstance(inp,(int,float)):
-        return datetime(2008,1,1,0,0) + timedelta(seconds=input)
+        return datetime(2008,1,1,0,0) + timedelta(seconds=inp)
     if isinstance(inp,datetime):
         return (inp - datetime(2008,1,1,0,0)).total_seconds()
     if isinstance(inp,(bytes,bytearray)):

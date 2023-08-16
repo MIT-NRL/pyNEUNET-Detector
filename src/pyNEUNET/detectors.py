@@ -367,7 +367,8 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    obj.sanity_check()
+    result = obj.read()
+    print(result)
 
 if __name__ == "__main__":
     main()
