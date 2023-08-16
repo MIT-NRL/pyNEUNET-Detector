@@ -25,6 +25,11 @@ def rebin(inp, bins, save=False, label="", fldr=""):
     fldr: str, optional
             Folder to save to
             Only used if input is an array and save is true
+
+    Returns
+    -------
+    new_hist: numpy array
+            Histogram with correct number of bins
     """
     if isinstance(inp, str):
         orig_hist = np.loadtxt(inp).transpose()

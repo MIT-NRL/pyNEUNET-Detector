@@ -57,7 +57,6 @@ def translate_instrument_time(inp=None, mode='seconds'):
     mode : str
         'seconds' : output time in seconds
         'datetime' : output time in datetime
-
     '''
     if inp is None:
         seconds_since_2008 = (datetime.now() - datetime(2008,1,1,0,0)).total_seconds()
