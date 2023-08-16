@@ -5,8 +5,8 @@ August 2023
 """
 
 import socket
-from datetime import datetime, timedelta
 from collections import OrderedDict
+from datetime import datetime, timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -156,9 +156,9 @@ class Linear3HePSD:
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
             res = int(position * self.BINS)
-        
+
             self.__counts[f"detector {psd_number}"] += 1
-            self.__histograms[f"detector {psd_number}"][res,1] += 1
+            self.__histograms[f"detector {psd_number}"][res, 1] += 1
 
     def read(
         self,
@@ -206,10 +206,9 @@ class Linear3HePSD:
         if verbose:
             print("Connected")
 
-        blank_array = np.column_stack((
-            to_physical_position(np.linspace(0,1,self.BINS)),
-            np.zeros(self.BINS)
-        ))
+        blank_array = np.column_stack(
+            (to_physical_position(np.linspace(0, 1, self.BINS)), np.zeros(self.BINS))
+        )
 
         self.__counts = {}
         self.__histograms = {}
@@ -255,8 +254,8 @@ class Linear3HePSD:
             fig, (ax0) = plt.subplots(1, 1)
             for i in self.__psd_nums:
                 ax0.plot(
-                    self.__histograms[f"detector {i}"][:,0],
-                    self.__histograms[f"detector {i}"][:,1],
+                    self.__histograms[f"detector {i}"][:, 0],
+                    self.__histograms[f"detector {i}"][:, 1],
                     label=f"detector {i}",
                 )
             ax0.legend()
