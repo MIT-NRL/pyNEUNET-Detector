@@ -6,12 +6,13 @@ August 2023
 
 import socket
 from collections import OrderedDict
+from datetime import datetime, timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .communications import register_readwrite
-from .translaters import (
+from communications import register_readwrite
+from translaters import (
     to_physical_position,
     translate_instrument_time,
     translate_neutron_data,
@@ -154,13 +155,10 @@ class Linear3HePSD:
         """
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
-            res = (
-                self.BINS - 1
-                if position * self.BINS >= self.BINS
-                else int(position * self.BINS)
-            )
+            res = int(position * self.BINS)
+
             self.__counts[f"detector {psd_number}"] += 1
-            self.__histograms[f"detector {psd_number}"][1][res] += 1
+            self.__histograms[f"detector {psd_number}"][res, 1] += 1
 
     def read(
         self,
@@ -208,12 +206,11 @@ class Linear3HePSD:
         sock.connect((self.__ip, self.__tcp_port))
         if verbose:
             print("Connected")
-        blank_array = np.array(
-            [
-                [to_physical_position(i / self.BINS) for i in range(self.BINS)],
-                [0 for i in range(self.BINS)],
-            ]
+
+        blank_array = np.column_stack(
+            (to_physical_position(np.linspace(0, 1, self.BINS)), np.zeros(self.BINS))
         )
+
         self.__counts = {}
         self.__histograms = {}
         for i in self.__psd_nums:
@@ -242,6 +239,7 @@ class Linear3HePSD:
                 self._count_neutron()
             elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 current_time = translate_instrument_time(self.__bytes_data[1:])
+        end_time = self.__start_time
         elapsed_time = current_time - self.__start_time
         if verbose:
             print("Completed collecting neutron counts")
@@ -257,8 +255,8 @@ class Linear3HePSD:
             fig, (ax0) = plt.subplots(1, 1)
             for i in self.__psd_nums:
                 ax0.plot(
-                    self.__histograms[f"detector {i}"][0],
-                    self.__histograms[f"detector {i}"][1],
+                    self.__histograms[f"detector {i}"][:, 0],
+                    self.__histograms[f"detector {i}"][:, 1],
                     label=f"detector {i}",
                 )
             ax0.legend()
