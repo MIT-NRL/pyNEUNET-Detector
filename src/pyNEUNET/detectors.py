@@ -95,7 +95,7 @@ class Linear3HePSD:
             recv_byte = sock.recv(1)
             if verbose:
                 print(recv_byte)
-            while recv_byte[0] not in self.TCP_START_BYTES:
+            while recv_byte[0] not in self.TCP_START_BYTES.values():
                 recv_byte = sock.recv(1)
                 if verbose:
                     print(recv_byte.hex())
@@ -177,6 +177,7 @@ class Linear3HePSD:
             self.collect_8bytes(sock)
             if self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 self.__start_time = translate_instrument_time(self.__bytes_data[1:])
+                start_timestamp = translate_instrument_time(self.__start_time).timestamp()
         if verbose:
             print("Reached first 'instrument time' data")
         while current_time - self.__start_time < self.__exposure_time:
@@ -202,6 +203,8 @@ class Linear3HePSD:
             ax0.set_xlabel("position (mm)")
             ax0.set_ylabel("neutron count")
             ax0.set_title(f"Neutron counts v. position")
+            if verbose:
+                fig.show()
 
         if save:
             if fldr:
@@ -210,16 +213,13 @@ class Linear3HePSD:
                 test_label = fldr + test_label
             for i in self.__psd_nums:
                 np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.__histograms[f"detector {i}"],
-                           header=f"detector {i}, start: {self.__start_time}; \
+                           header=f"detector {i}, start: {start_timestamp}, elapsed time (s): {elapsed_time}; \
                             column 1 = physical position (mm), column 2 = counts per position.")
             if graph:
                 fig.savefig(test_label+"_graph.png")
-                fig.show()
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
-            start_timestamp = translate_instrument_time(self.__start_time).timestamp()
-            # TODO: The "value" field has to be JSON encodable (for our purposes, a number, string, or array)
             result = OrderedDict()
             for i in self.__psd_nums:
                 result[f"detector {i}"] = {"value": self.__histograms[f"detector {i}"],
@@ -292,17 +292,6 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    # obj.stage(True)
-    # obj.sanity_check()
-    # obj.exposure_time = 15
-    # output = obj.read()
-    # print(output)
-    # obj.exposure_time = 10
-    # output_2 = obj.read()
-    # print(output_2)
-    # obj.exposure_time = 60
-    # output = obj.read(test_label="8_14_2023_try", graph=True, save=True, fldr="c:/Users/4DH4/Desktop/pyneunet_output", verbose=True)
-    # print(output)
 
 if __name__ == '__main__':
     main()
