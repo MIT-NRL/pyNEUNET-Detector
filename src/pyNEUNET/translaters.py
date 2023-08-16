@@ -29,7 +29,6 @@ def translate_neutron_data(bin_data, resolution_type=14):
             Value ranging from 0 to 1 corresponding to position on detector
             See to_physical_position function to convert to physical position
     """
-    # nanoseconds = 25*10**-9*(2**16*bin_data[1] + 2**8*bin_data[2] + bin_data[3])
     if resolution_type == 12:
         psd_number = bin_data[4] % 2**3
         pulse_left = 2**4*bin_data[5] + bin_data[6] // 2**4
