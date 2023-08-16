@@ -44,7 +44,7 @@ class Linear3HePSD:
         ip_address="192.168.0.17",
         tcp_port=23,
         udp_port=4660,
-        psd_nums=[0, 7],
+        psd_nums=(0, 7),
         exposure_time=10,
     ):
         """
@@ -74,14 +74,14 @@ class Linear3HePSD:
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
         """
         # Set time to 32-bit mode
-        responseByte = register_readwrite(
+        response_byte = register_readwrite(
             self.__ip, self.__udp_port, self.UDP_ADDR["time mode"], data=0x80
         )
 
         # First send the computer time to the instrument
         if verbose:
             print("Detector time before setting:", self.instrument_time)
-        responseByte = register_readwrite(
+        response_byte = register_readwrite(
             self.__ip,
             self.__udp_port,
             self.UDP_ADDR["device time"],
@@ -91,12 +91,12 @@ class Linear3HePSD:
             print("Detector time after setting:", self.instrument_time)
 
         # Set event memory read mode
-        responseByte = register_readwrite(
+        response_byte = register_readwrite(
             self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2)
         )
 
         # Set 14-bit (high-resolution) mode and one-way mode
-        responseByte = register_readwrite(
+        response_byte = register_readwrite(
             self.__ip, self.__udp_port, self.UDP_ADDR["resolution"], data=[0x8A, 0x80]
         )
 
@@ -109,7 +109,7 @@ class Linear3HePSD:
         Shuts down and clears the NEUNET system register.
         """
         # Set handshake mode
-        responseByte = register_readwrite(
+        response_byte = register_readwrite(
             self.__ip, self.__udp_port, self.UDP_ADDR["handshake/one-way"], data=[0x00]
         )
 
@@ -165,7 +165,7 @@ class Linear3HePSD:
     def read(
         self,
         test_label="",
-        format="bluesky",
+        output_format="bluesky",
         graph=False,
         save=False,
         verbose=False,
@@ -179,7 +179,7 @@ class Linear3HePSD:
         -------
         test_label: str
                 Name of files and graph
-        format: str, optional
+        output_format: str, optional
                 Format of output
                 If "bluesky" (default), output is a bluesky-compatible OrderedDict containing histograms and elapsed time
                 Otherwise, output is a tuple containing start time, elapsed time, and histograms
@@ -263,7 +263,7 @@ class Linear3HePSD:
             ax0.legend()
             ax0.set_xlabel("position (mm)")
             ax0.set_ylabel("neutron count")
-            ax0.set_title(f"Neutron counts v. position")
+            ax0.set_title("Neutron counts v. position")
             if verbose:
                 fig.show()
 
@@ -276,13 +276,15 @@ class Linear3HePSD:
                 np.savetxt(
                     f"{test_label}_detector{i}_histogram.txt",
                     self.__histograms[f"detector {i}"],
-                    header=f"detector {i}, start: {start_timestamp}, elapsed time (s): {elapsed_time}; \
-                            column 1 = physical position (mm), column 2 = counts per position.",
+                    header=f"detector {i}, start: {start_timestamp}, \
+                        elapsed time (s): {elapsed_time}; \
+                            column 1 = physical position (mm), \
+                                column 2 = counts per position.",
                 )
             if graph:
                 fig.savefig(test_label + "_graph.png")
 
-        if format == "bluesky":
+        if output_format == "bluesky":
             # Timestamp is in the format of seconds since 1970
             result = OrderedDict()
             for i in self.__psd_nums:
@@ -331,11 +333,11 @@ class Linear3HePSD:
         if not self.__staged:
             self.stage(True)
         self.collect_8bytes(sock, offset=False)
-        print("Bytes format:", self.__bytes_data)
+        print("Bytes:", self.__bytes_data)
         print("Hexadecimal:", self.__bytes_data.hex(":"))
         for i in range(pings - 1):
             self.collect_8bytes(sock)
-            print("Bytes format:", self.__bytes_data)
+            print("Bytes:", self.__bytes_data)
             print("Hexadecimal:", self.__bytes_data.hex(":"))
             if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
                 print("Neutron data:", translate_neutron_data(self.__bytes_data))
@@ -352,8 +354,8 @@ class Linear3HePSD:
         return self.__exposure_time
 
     @exposure_time.setter
-    def exposure_time(self, input):
-        self.__exposure_time = input
+    def exposure_time(self, seconds):
+        self.__exposure_time = seconds
 
     @property
     def instrument_time(self):
