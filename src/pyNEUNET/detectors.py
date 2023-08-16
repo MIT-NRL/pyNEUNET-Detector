@@ -11,8 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .communications import register_readwrite
-from .translaters import (to_physical_position, translate_instrument_time,
-                          translate_neutron_data)
+from .translaters import (
+    to_physical_position,
+    translate_instrument_time,
+    translate_neutron_data,
+)
 
 
 class Linear3HePSD:
