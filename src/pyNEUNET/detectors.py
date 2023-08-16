@@ -181,7 +181,8 @@ class Linear3HePSD:
                 Name of files and graph
         output_format: str, optional
                 Format of output
-                If "bluesky" (default), output is a bluesky-compatible OrderedDict containing histograms and elapsed time
+                If "bluesky" (default), output is a bluesky-compatible
+                    OrderedDict containing histograms and elapsed time
                 Otherwise, output is a tuple containing start time, elapsed time, and histograms
         graph: boolean, optional
                 Whether to graph histogram data
@@ -366,10 +367,9 @@ class Linear3HePSD:
             mode="datetime",
         )
 
-
 def main():
     obj = Linear3HePSD()
-
+    obj.sanity_check()
 
 if __name__ == "__main__":
     main()
