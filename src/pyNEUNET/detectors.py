@@ -277,11 +277,11 @@ class Linear3HePSD:
                 np.savetxt(
                     f"{test_label}_detector{i}_histogram.txt",
                     self.__histograms[f"detector {i}"],
-                    header=f"detector {i}, start: {start_timestamp}, \
-                        elapsed time (s): {elapsed_time}; \
-                            column 1 = physical position (mm), \
-                                column 2 = counts per position.",
-                )
+                    header=f"detector {i}\n"+\
+                        f"Start time: {(datetime.fromtimestamp(start_timestamp))}\n"+\
+                            f"End time: {translate_instrument_time(end_time)}\n"+\
+                                f"Exposure time (s): {elapsed_time}\n"+\
+                                    "column 1 = physical position (mm), column 2 = counts per position.")
             if graph:
                 fig.savefig(test_label + "_graph.png")
 
