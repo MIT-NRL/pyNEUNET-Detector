@@ -155,7 +155,7 @@ class Linear3HePSD:
         """
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
-            res = int(position * self.BINS)
+            res = int(position * (self.BINS-1))
 
             self.__counts[f"detector {psd_number}"] += 1
             self.__histograms[f"detector {psd_number}"][res, 1] += 1
