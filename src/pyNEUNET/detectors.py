@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .communications import register_readwrite
-from .translaters import (
+from communications import register_readwrite
+from translaters import (
     to_physical_position,
     translate_instrument_time,
     translate_neutron_data,
@@ -274,9 +274,11 @@ class Linear3HePSD:
                 np.savetxt(
                     f"{test_label}_detector{i}_histogram.txt",
                     self.__histograms[f"detector {i}"],
-                    header=f"detector {i}\nStart time: {(datetime.fromtimestamp(start_timestamp))}\nEnd time: {translate_instrument_time(end_time)}\nExposure time (s): {elapsed_time}\n \
-                            column 1 = physical position (mm), column 2 = counts per position.",
-                )
+                    header=f"detector {i}\n"+\
+                        f"Start time: {(datetime.fromtimestamp(start_timestamp))}\n"+\
+                            f"End time: {translate_instrument_time(end_time)}\n"+\
+                                f"Exposure time (s): {elapsed_time}\n"+\
+                                    "column 1 = physical position (mm), column 2 = counts per position.")
             if graph:
                 fig.savefig(test_label + "_graph.png")
 
@@ -365,6 +367,7 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
+    obj.read(verbose=True, save=True, fldr="c:/users/4dh4/desktop/pyneunet_import_attempts", test_label="transposed")
 
 
 if __name__ == "__main__":
