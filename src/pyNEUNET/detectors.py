@@ -367,8 +367,7 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    obj.read(verbose=True, save=True, fldr="c:/users/4dh4/desktop/pyneunet_import_attempts", test_label="transposed")
-
+    obj.sanity_check()
 
 if __name__ == "__main__":
     main()
