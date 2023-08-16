@@ -5,6 +5,7 @@ August 2023
 """
 
 import socket
+from datetime import datetime, timedelta
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt
@@ -154,13 +155,10 @@ class Linear3HePSD:
         """
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
-            res = (
-                self.BINS - 1
-                if position * self.BINS >= self.BINS
-                else int(position * self.BINS)
-            )
+            res = int(position * self.BINS)
+        
             self.__counts[f"detector {psd_number}"] += 1
-            self.__histograms[f"detector {psd_number}"][1][res] += 1
+            self.__histograms[f"detector {psd_number}"][res,1] += 1
 
     def read(
         self,
@@ -207,12 +205,12 @@ class Linear3HePSD:
         sock.connect((self.__ip, self.__tcp_port))
         if verbose:
             print("Connected")
-        blank_array = np.array(
-            [
-                [to_physical_position(i / self.BINS) for i in range(self.BINS)],
-                [0 for i in range(self.BINS)],
-            ]
-        )
+
+        blank_array = np.column_stack((
+            to_physical_position(np.linspace(0,1,self.BINS)),
+            np.zeros(self.BINS)
+        ))
+
         self.__counts = {}
         self.__histograms = {}
         for i in self.__psd_nums:
@@ -241,6 +239,7 @@ class Linear3HePSD:
                 self._count_neutron()
             elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 current_time = translate_instrument_time(self.__bytes_data[1:])
+        end_time = self.__start_time
         elapsed_time = current_time - self.__start_time
         if verbose:
             print("Completed collecting neutron counts")
@@ -256,8 +255,8 @@ class Linear3HePSD:
             fig, (ax0) = plt.subplots(1, 1)
             for i in self.__psd_nums:
                 ax0.plot(
-                    self.__histograms[f"detector {i}"][0],
-                    self.__histograms[f"detector {i}"][1],
+                    self.__histograms[f"detector {i}"][:,0],
+                    self.__histograms[f"detector {i}"][:,1],
                     label=f"detector {i}",
                 )
             ax0.legend()
@@ -276,7 +275,7 @@ class Linear3HePSD:
                 np.savetxt(
                     f"{test_label}_detector{i}_histogram.txt",
                     self.__histograms[f"detector {i}"],
-                    header=f"detector {i}, start: {start_timestamp}, elapsed time (s): {elapsed_time}; \
+                    header=f"detector {i}\nStart time: {(datetime.fromtimestamp(start_timestamp))}\nEnd time: {translate_instrument_time(end_time)}\nExposure time (s): {elapsed_time}\n \
                             column 1 = physical position (mm), column 2 = counts per position.",
                 )
             if graph:
