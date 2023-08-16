@@ -5,23 +5,45 @@ August 2023
 """
 
 import socket
-import numpy as np
-import matplotlib.pyplot as plt
 from collections import OrderedDict
-from .translaters import translate_instrument_time, translate_neutron_data, to_physical_position
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 from .communications import register_readwrite
+from .translaters import (to_physical_position, translate_instrument_time,
+                          translate_neutron_data)
+
 
 class Linear3HePSD:
-    '''
+    """
     Linear 3He position sensitive neutron detector with a resolution of 5 mm
-    built by Canon. The device is controlled with the NEUNET system. 
-    '''
+    built by Canon. The device is controlled with the NEUNET system.
+    """
+
     BINS = 1024
-    UDP_ADDR = {"time mode": 0x18a, "device time": 0x190, "read/write": 0x186, "resolution": 0x1b4, "handshake/one-way": 0x1b5}
-    TCP_START_BYTES = {"neutron event": 0x5f, "trigger id": 0x5b, "instrument time": 0x6c}
+    UDP_ADDR = {
+        "time mode": 0x18A,
+        "device time": 0x190,
+        "read/write": 0x186,
+        "resolution": 0x1B4,
+        "handshake/one-way": 0x1B5,
+    }
+    TCP_START_BYTES = {
+        "neutron event": 0x5F,
+        "trigger id": 0x5B,
+        "instrument time": 0x6C,
+    }
     TIMEOUT = 5
-    
-    def __init__(self, ip_address="192.168.0.17", tcp_port=23, udp_port=4660, psd_nums=[0, 7], exposure_time=10):
+
+    def __init__(
+        self,
+        ip_address="192.168.0.17",
+        tcp_port=23,
+        udp_port=4660,
+        psd_nums=[0, 7],
+        exposure_time=10,
+    ):
         """
         Creates new socket object linked to detectors
         Default inputs given by Canon documentation for TCP connection
@@ -45,36 +67,48 @@ class Linear3HePSD:
         self.__exposure_time = exposure_time
 
     def stage(self, verbose=False):
-        '''
+        """
         Sets up the NEUNET system register (mode, instrument time, etc) using UDP protocol.
-        '''
-        #Set time to 32-bit mode
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["time mode"], data=0x80)
+        """
+        # Set time to 32-bit mode
+        responseByte = register_readwrite(
+            self.__ip, self.__udp_port, self.UDP_ADDR["time mode"], data=0x80
+        )
 
-        #First send the computer time to the instrument
+        # First send the computer time to the instrument
         if verbose:
             print("Detector time before setting:", self.instrument_time)
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
-                                          data=translate_instrument_time()+bytes([0x00,0x00]))
+        responseByte = register_readwrite(
+            self.__ip,
+            self.__udp_port,
+            self.UDP_ADDR["device time"],
+            data=translate_instrument_time() + bytes([0x00, 0x00]),
+        )
         if verbose:
             print("Detector time after setting:", self.instrument_time)
 
-        #Set event memory read mode
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2))
+        # Set event memory read mode
+        responseByte = register_readwrite(
+            self.__ip, self.__udp_port, self.UDP_ADDR["read/write"], data=bytes(2)
+        )
 
-        #Set 14-bit (high-resolution) mode and one-way mode
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["resolution"], data=[0x8a, 0x80])
+        # Set 14-bit (high-resolution) mode and one-way mode
+        responseByte = register_readwrite(
+            self.__ip, self.__udp_port, self.UDP_ADDR["resolution"], data=[0x8A, 0x80]
+        )
 
         self.__staged = True
         if verbose:
             print("Finished staging")
 
     def unstage(self):
-        '''
+        """
         Shuts down and clears the NEUNET system register.
-        '''
-        #Set handshake mode
-        responseByte = register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["handshake/one-way"], data=[0x00])
+        """
+        # Set handshake mode
+        responseByte = register_readwrite(
+            self.__ip, self.__udp_port, self.UDP_ADDR["handshake/one-way"], data=[0x00]
+        )
 
         self.__staged = False
 
@@ -117,15 +151,27 @@ class Linear3HePSD:
         """
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
-            res = self.BINS-1 if position*self.BINS >= self.BINS else int(position*self.BINS)
+            res = (
+                self.BINS - 1
+                if position * self.BINS >= self.BINS
+                else int(position * self.BINS)
+            )
             self.__counts[f"detector {psd_number}"] += 1
             self.__histograms[f"detector {psd_number}"][1][res] += 1
 
-    def read(self, test_label="", format="bluesky", graph=False, save=False, verbose=False, fldr=""):
-        """"
+    def read(
+        self,
+        test_label="",
+        format="bluesky",
+        graph=False,
+        save=False,
+        verbose=False,
+        fldr="",
+    ):
+        """ "
         Connects to detector and reads data for given time length
         Creates histograms of neutron counts for binned physical positions on detectors
-        
+
         Parameters
         -------
         test_label: str
@@ -158,8 +204,12 @@ class Linear3HePSD:
         sock.connect((self.__ip, self.__tcp_port))
         if verbose:
             print("Connected")
-        blank_array = np.array([[to_physical_position(i/self.BINS) for i in range(self.BINS)],
-                                [0 for i in range(self.BINS)]])
+        blank_array = np.array(
+            [
+                [to_physical_position(i / self.BINS) for i in range(self.BINS)],
+                [0 for i in range(self.BINS)],
+            ]
+        )
         self.__counts = {}
         self.__histograms = {}
         for i in self.__psd_nums:
@@ -167,7 +217,7 @@ class Linear3HePSD:
             self.__histograms[f"detector {i}"] = np.copy(blank_array)
         self.__start_time = 0
         current_time = 0
-        
+
         if not self.__staged:
             self.stage(verbose)
         self.collect_8bytes(sock, offset=True)
@@ -177,7 +227,9 @@ class Linear3HePSD:
             self.collect_8bytes(sock)
             if self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                 self.__start_time = translate_instrument_time(self.__bytes_data[1:])
-                start_timestamp = translate_instrument_time(self.__start_time).timestamp()
+                start_timestamp = translate_instrument_time(
+                    self.__start_time
+                ).timestamp()
         if verbose:
             print("Reached first 'instrument time' data")
         while current_time - self.__start_time < self.__exposure_time:
@@ -190,7 +242,9 @@ class Linear3HePSD:
         if verbose:
             print("Completed collecting neutron counts")
             for i in self.__psd_nums:
-                  print(f"Total counts from detector {i}: {self.__counts[f'detector {i}']}")
+                print(
+                    f"Total counts from detector {i}: {self.__counts[f'detector {i}']}"
+                )
 
             print(f"Exposure time: {elapsed_time} s")
         sock.close()
@@ -198,7 +252,11 @@ class Linear3HePSD:
         if graph:
             fig, (ax0) = plt.subplots(1, 1)
             for i in self.__psd_nums:
-                ax0.plot(self.__histograms[f"detector {i}"][0], self.__histograms[f"detector {i}"][1], label=f"detector {i}")
+                ax0.plot(
+                    self.__histograms[f"detector {i}"][0],
+                    self.__histograms[f"detector {i}"][1],
+                    label=f"detector {i}",
+                )
             ax0.legend()
             ax0.set_xlabel("position (mm)")
             ax0.set_ylabel("neutron count")
@@ -212,38 +270,45 @@ class Linear3HePSD:
                     fldr += "/"
                 test_label = fldr + test_label
             for i in self.__psd_nums:
-                np.savetxt(f"{test_label}_detector{i}_histogram.txt", self.__histograms[f"detector {i}"],
-                           header=f"detector {i}, start: {start_timestamp}, elapsed time (s): {elapsed_time}; \
-                            column 1 = physical position (mm), column 2 = counts per position.")
+                np.savetxt(
+                    f"{test_label}_detector{i}_histogram.txt",
+                    self.__histograms[f"detector {i}"],
+                    header=f"detector {i}, start: {start_timestamp}, elapsed time (s): {elapsed_time}; \
+                            column 1 = physical position (mm), column 2 = counts per position.",
+                )
             if graph:
-                fig.savefig(test_label+"_graph.png")
+                fig.savefig(test_label + "_graph.png")
 
         if format == "bluesky":
             # Timestamp is in the format of seconds since 1970
             result = OrderedDict()
             for i in self.__psd_nums:
-                result[f"detector {i}"] = {"value": self.__histograms[f"detector {i}"],
-                                           "timestamp": start_timestamp}
-            result["elapsed time"] = {"value": elapsed_time,
-                                      "timestamp": start_timestamp}
+                result[f"detector {i}"] = {
+                    "value": self.__histograms[f"detector {i}"],
+                    "timestamp": start_timestamp,
+                }
+            result["elapsed time"] = {
+                "value": elapsed_time,
+                "timestamp": start_timestamp,
+            }
             if verbose:
                 print(result)
             return result
-        
+
         return start_timestamp, elapsed_time, self.__histograms
-    
+
     def describe(self):
         """
         Returns bluesky-compatible OrderedDict describing output data
         """
         description = OrderedDict()
         for i in self.__psd_nums:
-            description[f"detector {i}"] = {"source": f"detector {i}",
-                                            "dtype": "array",
-                                            "shape": [self.BINS, 2]}
-        description["elapsed time"] = {"source": "n/a",
-                                       "dtype": "number",
-                                       "shape": []}
+            description[f"detector {i}"] = {
+                "source": f"detector {i}",
+                "dtype": "array",
+                "shape": [self.BINS, 2],
+            }
+        description["elapsed time"] = {"source": "n/a", "dtype": "number", "shape": []}
         return description
 
     def sanity_check(self, pings=100):
@@ -264,34 +329,42 @@ class Linear3HePSD:
             self.stage(True)
         self.collect_8bytes(sock, offset=False)
         print("Bytes format:", self.__bytes_data)
-        print("Hexadecimal:", self.__bytes_data.hex(':'))
-        for i in range(pings-1):
+        print("Hexadecimal:", self.__bytes_data.hex(":"))
+        for i in range(pings - 1):
             self.collect_8bytes(sock)
             print("Bytes format:", self.__bytes_data)
-            print("Hexadecimal:", self.__bytes_data.hex(':'))
+            print("Hexadecimal:", self.__bytes_data.hex(":"))
             if self.__bytes_data[0] == self.TCP_START_BYTES["neutron event"]:
                 print("Neutron data:", translate_neutron_data(self.__bytes_data))
             elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
-                print("Instrument time:", translate_instrument_time(self.__bytes_data[1:], mode="datetime"))
+                print(
+                    "Instrument time:",
+                    translate_instrument_time(self.__bytes_data[1:], mode="datetime"),
+                )
         sock.close()
         print("Closed socket")
-    
+
     @property
     def exposure_time(self):
         return self.__exposure_time
-    
+
     @exposure_time.setter
     def exposure_time(self, input):
         self.__exposure_time = input
 
     @property
     def instrument_time(self):
-        return translate_instrument_time(register_readwrite(self.__ip, self.__udp_port, self.UDP_ADDR["device time"],
-                                                  length=5)[8:], mode="datetime")
+        return translate_instrument_time(
+            register_readwrite(
+                self.__ip, self.__udp_port, self.UDP_ADDR["device time"], length=5
+            )[8:],
+            mode="datetime",
+        )
 
 
 def main():
     obj = Linear3HePSD()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
