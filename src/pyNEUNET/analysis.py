@@ -31,20 +31,18 @@ def rebin(inp, bins, save=False, label="", fldr=""):
     new_hist: numpy array
             Histogram with correct number of bins
     """
+    inptype = type(inp)
     if isinstance(inp, str):
-        orig_hist = np.loadtxt(inp).transpose()
-    elif isinstance(inp, np.ndarray):
-        orig_hist = inp.transpose()
-    rebinned = binned_statistic(orig_hist[0], orig_hist[1], "sum", bins=bins)
-    rebinned_x = [(rebinned.bin_edges[j] + rebinned.bin_edges[j+1])/2
-                  for j in range(len(rebinned.bin_edges)-1)]
+        inp = np.loadtxt(inp)
+    rebinned = binned_statistic(inp[:,0], inp[:,1], "sum", bins=bins)
+    rebinned_x = np.linspace(rebinned.bin_edges[0], rebinned.bin_edges[-1], bins)
     rebinned_y = rebinned.statistic
-    new_hist = np.array([rebinned_x, rebinned_y]).transpose()
+    new_hist = np.column_stack((rebinned_x, rebinned_y))
     if save:
-        if isinstance(inp, str):
+        if inptype == str:
             splitup = inp.split("/")
             new_filename = "/".join(splitup[:-1])+f"rebinned_{bins}bins"+splitup[-1]
-        elif isinstance(inp, np.ndarray):
+        elif inptype == np.ndarray:
             if fldr[-1] != "/":
                 fldr = fldr+"/"
             new_filename = fldr+label
