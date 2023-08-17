@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .communications import register_readwrite
-from .translaters import (
+from .translators import (
     to_physical_position,
     translate_instrument_time,
     translate_neutron_data,

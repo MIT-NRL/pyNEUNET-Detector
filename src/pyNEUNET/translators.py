@@ -1,5 +1,5 @@
 """
-translaters.py
+translators.py
 Sabine Chu, Sean Fayfar
 August 2023
 """
