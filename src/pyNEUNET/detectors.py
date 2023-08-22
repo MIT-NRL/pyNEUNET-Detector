@@ -360,8 +360,7 @@ class Linear3HePSD:
     def exposure_time(self, seconds):
         self.__exposure_time = seconds
 
-    @property
-    def instrument_time(self):
+    def get_instrument_time(self):
         return translate_instrument_time(
             register_readwrite(
                 self.__ip, self.__udp_port, self.UDP_ADDR["device time"], length=5
