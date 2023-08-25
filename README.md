@@ -22,12 +22,28 @@ Assuming you only imported the detectors.py file, create a new reader object by 
 
     reader = detectors.Linear3HePSD()
 
-Set exposure time (seconds) and number of position bins (350 bins ~ 1 mm resolution):
+Set exposure time (seconds) and number of position bins (default of 350 bins ~ 1 mm resolution):
 
     reader.exposure_time = 30
 
-    reader.bins = 350
+    reader.bins = 500
+
+Run a sanity check to make sure functions run as they should:
+
+    reader.sanity_check()
 
 Read data:
 
-    reader.read()
+    output = reader.read()
+
+To save, graph, overwrite old files, name files, and choose folder to save to:
+
+    output = reader.read(save=True, graph=True, overwrite=True, test_label="name_of_file", fldr="name_of_folder")
+
+To print messages during a reading:
+
+    output = reader.read(verbose=True)
+
+To change output format to a tuple containing start time, elapsed time, histograms:
+
+    output = reader.read(output_format=None)
