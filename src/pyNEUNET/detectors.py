@@ -7,6 +7,7 @@ August 2023
 import socket
 from collections import OrderedDict
 from datetime import datetime
+from os.path import exists
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +26,6 @@ class Linear3HePSD:
     built by Canon. The device is controlled with the NEUNET system.
     """
 
-    BINS = 1024
     UDP_ADDR = {
         "time mode": 0x18A,
         "device time": 0x190,
@@ -47,6 +47,7 @@ class Linear3HePSD:
         udp_port=4660,
         psd_nums=(0, 7),
         exposure_time=10,
+        bins=350
     ):
         """
         Creates new socket object linked to detectors
@@ -60,6 +61,13 @@ class Linear3HePSD:
                 Port number for TCP connection
         udp_port: int, optional
                 Port number for UDP connection
+        psd_nums: list, tuple, or set, optional
+                Numbers of the detectors we're using
+                Must range from 0 to 7
+        exposure_time: int or float, optional
+                Exposure time for readings
+        bins: int, optional
+                Bin size for histograms
         """
         self.name = "Linear3HePSD"
         self.parent = None
@@ -69,6 +77,7 @@ class Linear3HePSD:
         self.__psd_nums = psd_nums
         self.__staged = False
         self.__exposure_time = exposure_time
+        self.__bins = bins
 
     def stage(self, verbose=False):
         """
@@ -81,7 +90,7 @@ class Linear3HePSD:
 
         # First send the computer time to the instrument
         if verbose:
-            print("Detector time before setting:", self.instrument_time)
+            print("Detector time before setting:", self.get_instrument_time())
         response_byte = register_readwrite(
             self.__ip,
             self.__udp_port,
@@ -89,7 +98,7 @@ class Linear3HePSD:
             data=translate_instrument_time() + bytes([0x00, 0x00]),
         )
         if verbose:
-            print("Detector time after setting:", self.instrument_time)
+            print("Detector time after setting:", self.get_instrument_time())
 
         # Set event memory read mode
         response_byte = register_readwrite(
@@ -155,7 +164,7 @@ class Linear3HePSD:
         """
         psd_number, position = translate_neutron_data(self.__bytes_data)
         if position is not None:
-            res = int(position * (self.BINS - 1))
+            res = int(position * (self.__bins - 1))
 
             self.__counts[f"detector {psd_number}"] += 1
             self.__histograms[f"detector {psd_number}"][res, 1] += 1
@@ -168,6 +177,7 @@ class Linear3HePSD:
         save=False,
         verbose=False,
         fldr="",
+        overwrite=True
     ):
         """ "
         Connects to detector and reads data for given time length
@@ -195,6 +205,10 @@ class Linear3HePSD:
                 Folder to save data to
                 Only called if save is True
                 Default is main directory
+        overwrite: boolean, optional
+                If a file with the same name already exists, whether to overwrite or create new file
+                Only called if save is True
+                Default is True
 
         Returns
         -------
@@ -209,8 +223,8 @@ class Linear3HePSD:
 
             blank_array = np.column_stack(
                 (
-                    to_physical_position(np.linspace(0, 1, self.BINS)),
-                    np.zeros(self.BINS),
+                    to_physical_position(np.linspace(0, 1, self.__bins)),
+                    np.zeros(self.__bins),
                 )
             )
 
@@ -222,8 +236,8 @@ class Linear3HePSD:
             self.__start_time = 0
             current_time = 0
 
-            if not self.__staged:
-                self.stage(verbose)
+            # if not self.__staged:
+            self.stage(verbose)
             self.collect_8bytes(sock, offset=True)
             if verbose:
                 print("Started collecting")
@@ -234,6 +248,7 @@ class Linear3HePSD:
                     start_timestamp = translate_instrument_time(
                         self.__start_time
                     ).timestamp()
+                    # computer_start_time = datetime.now()
             if verbose:
                 print("Reached first 'instrument time' data")
             while current_time - self.__start_time < self.__exposure_time:
@@ -242,7 +257,8 @@ class Linear3HePSD:
                     self._count_neutron()
                 elif self.__bytes_data[0] == self.TCP_START_BYTES["instrument time"]:
                     current_time = translate_instrument_time(self.__bytes_data[1:])
-            end_time = self.__start_time
+            end_time = current_time
+            # computer_end_time = datetime.now()
             elapsed_time = current_time - self.__start_time
             if verbose:
                 print("Completed collecting neutron counts")
@@ -252,6 +268,7 @@ class Linear3HePSD:
                     )
 
                 print(f"Exposure time: {elapsed_time} s")
+                # print(f"Computer elapsed time: {(computer_end_time - computer_start_time).total_seconds()}")
             # sock.close()
 
         if graph:
@@ -274,6 +291,8 @@ class Linear3HePSD:
                 if fldr[-1] != "/":
                     fldr += "/"
                 test_label = fldr + test_label
+            if (not overwrite) and exists(f"{test_label}_detector{list(self.__psd_nums)[0]}_histogram.txt"):
+                test_label += "_1"
             for i in self.__psd_nums:
                 np.savetxt(
                     f"{test_label}_detector{i}_histogram.txt",
@@ -314,7 +333,7 @@ class Linear3HePSD:
             description[f"detector {i}"] = {
                 "source": f"detector {i}",
                 "dtype": "array",
-                "shape": [self.BINS, 2],
+                "shape": [self.__bins, 2],
             }
         description["elapsed time"] = {"source": "n/a", "dtype": "number", "shape": []}
         return description
@@ -333,8 +352,8 @@ class Linear3HePSD:
         sock.settimeout(self.TIMEOUT)
         sock.connect((self.__ip, self.__tcp_port))
         print("Connected")
-        if not self.__staged:
-            self.stage(True)
+        # if not self.__staged:
+        self.stage(True)
         self.collect_8bytes(sock, offset=False)
         print("Bytes:", self.__bytes_data)
         print("Hexadecimal:", self.__bytes_data.hex(":"))
@@ -360,6 +379,14 @@ class Linear3HePSD:
     def exposure_time(self, seconds):
         self.__exposure_time = seconds
 
+    @property
+    def bins(self):
+        return self.__bins
+    
+    @bins.setter
+    def bins(self, num):
+        self.__bins = num
+
     def get_instrument_time(self):
         return translate_instrument_time(
             register_readwrite(
@@ -371,8 +398,12 @@ class Linear3HePSD:
 
 def main():
     obj = Linear3HePSD()
-    result = obj.read()
-    print(result)
+    # obj.exposure_time = 300
+    # obj.bins = 350
+    # result = obj.read(save=True, graph=True, test_label="350_bins_preset_300seconds_test",
+    #                   fldr="c:/Users/4DH4/Dropbox (MIT)/Experiments/MIT NRL/Stress Strain Diffractometer Data/2023-08/pyneunet_tests/",
+    #                   verbose=True, overwrite=False)
+    # # print(result)
 
 
 if __name__ == "__main__":
