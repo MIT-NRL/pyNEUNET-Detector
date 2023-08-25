@@ -18,7 +18,7 @@ at the top of your Python file. To import only the detectors.py file (for readin
     from pyNEUNET import detectors
 
 ## Usage
-Assuming you only imported the detectors.py file, create a new reader object by writing
+Create new reader object:
 
     reader = detectors.Linear3HePSD()
 
@@ -36,14 +36,18 @@ Read data:
 
     output = reader.read()
 
-To save, graph, overwrite old files, name files, and choose folder to save to:
+If you want to save, graph, overwrite old files, name files, and choose folder to save to:
 
     output = reader.read(save=True, graph=True, overwrite=True, test_label="name_of_file", fldr="name_of_folder")
 
-To print messages during a reading:
+If you want to print messages during a reading:
 
     output = reader.read(verbose=True)
 
-To change output format to a tuple containing start time, elapsed time, histograms:
+If you want to change output format to a tuple containing start time, elapsed time, histograms:
 
     output = reader.read(output_format=None)
+
+Once you're done reading, shut down the NEUNET register:
+
+    reader.unstage()
